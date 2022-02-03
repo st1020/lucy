@@ -177,7 +177,7 @@ class LVM:
                     if current_operate_stack.pop() is False:
                         self.pc = current_argument
                         continue
-                elif current_code.opcode == OPCodes.JNT:
+                elif current_code.opcode == OPCodes.JN:
                     if current_operate_stack[-1] is None:
                         self.pc = current_argument
                         continue

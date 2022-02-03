@@ -73,7 +73,7 @@ class OPCodes(Enum):
     JMP = OPCode('jmp', 1, ArgumentType.NUMBER)  # PC := $A
     JT = OPCode('jt', 1, ArgumentType.NUMBER)  # if (pop == true) PC := $A
     JF = OPCode('jf', 1, ArgumentType.NUMBER)  # if (pop == false) PC := $A
-    JNT = OPCode('jnt', 1, ArgumentType.NUMBER)  # if (top == null) PC := $A
+    JN = OPCode('jn', 1, ArgumentType.NUMBER)  # if (top == null) PC := $A
 
     # call 和 goto 第一步都是创建新的栈帧，并且依次从当前栈中 pop $A 个参数 push 进新的栈
     CALL = OPCode('call', 1, ArgumentType.NUMBER)  # call 调用新的函数，设置新的栈帧返回地址为自身下一条语句，进入新的栈帧 jmp pop
@@ -238,7 +238,7 @@ class CodeGenerator:
                 continue_label,
                 Code(OPCodes.FOR_PRE),
                 Code(OPCodes.TOP, ast_node.left1.name),
-                Code(OPCodes.JNT, break_label),
+                Code(OPCodes.JN, break_label),
                 Code(OPCodes.GET_TABLE_TOP),
                 Code(OPCodes.TOP, ast_node.left2.name),
                 Code(OPCodes.POP)

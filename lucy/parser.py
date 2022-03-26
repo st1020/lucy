@@ -586,21 +586,8 @@ class Parser:
 
     def parse_expression_func(self):
         ast_node = FunctionExpression()
-        id_flag = False
-        ast_node_assign = None
         ast_node.start = self.current_token.start
-        self.advance_token()
-        if self.current_token.type == TokenType.ID:
-            id_flag = True
-            ast_node_assign = AssignmentExpression(
-                left=Identifier(self.current_token.value,
-                                start=self.current_token.start, end=self.current_token.end),
-                operator='=',
-                right=ast_node,
-                start=ast_node.start
-            )
-            self.advance_token()
-        self.token_match(TokenType.LPAREN)
+        self.advance_token_match(TokenType.LPAREN)
         self.advance_token()
         while self.current_token.type != TokenType.RPAREN:
             self.token_match(TokenType.ID)
@@ -614,11 +601,7 @@ class Parser:
         self.advance_token_match(TokenType.LBRACE)  # func 表达式后必须是 block
         ast_node.body = self.parse_statement()
         ast_node.end = self.previous_token.end
-        if id_flag:
-            ast_node_assign.end = ast_node.end
-            return ast_node_assign
-        else:
-            return ast_node
+        return ast_node
 
     def parse_expression_table(self):
         ast_node = TableExpression()

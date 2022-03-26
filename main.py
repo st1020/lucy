@@ -5,19 +5,19 @@ from lucy import Lexer, Parser, CodeGenerator, LVM, dump_code, load_code
 
 if __name__ == '__main__':
     code = r'''
-    func test_func() {
-    }
+    test_func = func () {
+    };
     test_1 = true;
     test_1 = {'a': 1, "b": {1, 2}};
     test_1.a = 2;
     test_2 = {1, 2, 3};
-    func main(a, b) {
+    main = func (a, b) {
         global t;
         a = 0;
         a = a + 1;
         t = {"a": a + 110, "b": 2};
         return 1 + 1;
-    }
+    };
     a = 0;
     while (a != 10) {
         a = a + 1;

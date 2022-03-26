@@ -19,13 +19,13 @@ if __name__ == '__main__':
         return 1 + 1;
     };
     a = 0;
-    while (a != 10) {
+    while a != 10 {
         a = a + 1;
-        if (a == 4) {
+        if a == 4 {
             d = "123";
             c = null;
             f = false;
-            if (!f) {
+            if !f {
                 e = true;
                 break;
             }
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     }
     re = main(1, 2);
     lll = {};
-    for (k, v in t) {
+    for k, v in t {
         lll[v] = k;
     }
     '''

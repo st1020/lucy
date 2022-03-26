@@ -359,12 +359,12 @@ class Parser:
             # if
             ast_node = IfStatement()
             ast_node.start = self.current_token.start
-            self.advance_token_match(TokenType.LPAREN)
+            self.advance_token()
             ast_node.test = self.parse_expression()
-            ast_node.consequent = self.parse_statement()
+            ast_node.consequent = self.parse_statement_block()
             if self.current_token.type == TokenType.ELSE:
                 self.advance_token()
-                ast_node.alternate = self.parse_statement()
+                ast_node.alternate = self.parse_statement_block()
             ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.ELSE:
             # else
@@ -374,34 +374,29 @@ class Parser:
             ast_node = LoopStatement()
             ast_node.start = self.current_token.start
             self.advance_token()
-            ast_node.body = self.parse_statement()
+            ast_node.body = self.parse_statement_block()
             ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.WHILE:
             # while
             ast_node = WhileStatement()
             ast_node.start = self.current_token.start
-            self.advance_token_match(TokenType.LPAREN)
+            self.advance_token()
             ast_node.test = self.parse_expression()
-            ast_node.body = self.parse_statement()
+            ast_node.body = self.parse_statement_block()
             ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.FOR:
             # for
             ast_node = ForStatement()
             ast_node.start = self.current_token.start
-            self.advance_token_match(TokenType.LPAREN)
-            self.advance_token_match(TokenType.ID)
-            ast_node.left1 = Identifier(self.current_token.value,
-                                        start=self.current_token.start, end=self.current_token.end)
+            self.advance_token()
+            ast_node.left1 = self.parse_expression_identifier()
             self.advance_token_match(TokenType.COMMA)
-            self.advance_token_match(TokenType.ID)
-            ast_node.left2 = Identifier(self.current_token.value,
-                                        start=self.current_token.start, end=self.current_token.end)
+            self.advance_token()
+            ast_node.left2 = self.parse_expression_identifier()
             self.advance_token_match(TokenType.IN)
             self.advance_token()
             ast_node.right = self.parse_expression()
-            self.token_match(TokenType.RPAREN)
-            self.advance_token()
-            ast_node.body = self.parse_statement()
+            ast_node.body = self.parse_statement_block()
             ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.IN:
             # in
@@ -448,31 +443,32 @@ class Parser:
             ast_node = GlobalStatement()
             ast_node.start = self.current_token.start
             while self.current_token.type != TokenType.SEMI:
-                self.advance_token_match(TokenType.ID)
-                ast_node.arguments.append(Identifier(self.current_token.value,
-                                                     start=self.current_token.start, end=self.current_token.end))
+                self.advance_token()
+                ast_node.arguments.append(self.parse_expression_identifier())
                 self.advance_token()
                 if self.current_token.type != TokenType.SEMI and self.current_token.type != TokenType.COMMA:
                     raise self.error(expect_token_type=TokenType.COMMA)
             self.advance_token()
             ast_node.end = self.previous_token.end
-        elif self.current_token.type == TokenType.FUNC:
-            # func
-            ast_node = self.parse_expression_func()
+        # func 不需要单独解析，通过 parse_expression 解析
         elif self.current_token.type == TokenType.LBRACE:
             # block
-            ast_node = BlockStatement()
-            ast_node.start = self.current_token.start
-            self.advance_token()
-            while self.current_token.type != TokenType.RBRACE:
-                ast_node.body.append(self.parse_statement())
-            self.advance_token()
-            ast_node.end = self.previous_token.end
-            return ast_node
+            return self.parse_statement_block()
         else:
             ast_node = self.parse_expression()
             self.token_match(TokenType.SEMI)
             self.advance_token()
+        return ast_node
+
+    def parse_statement_block(self):
+        self.token_match(TokenType.LBRACE)
+        ast_node = BlockStatement()
+        ast_node.start = self.current_token.start
+        self.advance_token()
+        while self.current_token.type != TokenType.RBRACE:
+            ast_node.body.append(self.parse_statement())
+        self.advance_token()
+        ast_node.end = self.previous_token.end
         return ast_node
 
     def parse_expression(self, min_precedence: int = 1):
@@ -549,9 +545,8 @@ class Parser:
                 # 成员引用 .
                 ast_node = MemberExpression(table=ast_node, computed=False,
                                             start=start)
-                self.advance_token_match(TokenType.ID)
-                ast_node.property = Identifier(self.current_token.value,
-                                               start=self.current_token.start, end=self.current_token.end)
+                self.advance_token()
+                ast_node.property = self.parse_expression_identifier()
                 ast_node.end = self.current_token.end
                 self.advance_token()
         return ast_node
@@ -572,8 +567,7 @@ class Parser:
             ast_node = self.parse_expression_table()
         elif self.current_token.type == TokenType.ID:
             # id
-            ast_node = Identifier(self.current_token.value,
-                                  start=self.current_token.start, end=self.current_token.end)
+            ast_node = self.parse_expression_identifier()
             self.advance_token()
         elif self.current_token.type in get_operator_token_type_list(literal_const):
             # 字面量
@@ -584,22 +578,25 @@ class Parser:
             self.error()
         return ast_node
 
+    def parse_expression_identifier(self):
+        self.token_match(TokenType.ID)
+        return Identifier(self.current_token.value,
+                          start=self.current_token.start, end=self.current_token.end)
+
     def parse_expression_func(self):
         ast_node = FunctionExpression()
         ast_node.start = self.current_token.start
         self.advance_token_match(TokenType.LPAREN)
         self.advance_token()
         while self.current_token.type != TokenType.RPAREN:
-            self.token_match(TokenType.ID)
-            ast_node.params.append(Identifier(self.current_token.value,
-                                              start=self.current_token.start, end=self.current_token.end))
+            ast_node.params.append(self.parse_expression_identifier())
             self.advance_token()
             if self.current_token.type == TokenType.RPAREN:
                 break
             self.token_match(TokenType.COMMA)
             self.advance_token()
-        self.advance_token_match(TokenType.LBRACE)  # func 表达式后必须是 block
-        ast_node.body = self.parse_statement()
+        self.advance_token()
+        ast_node.body = self.parse_statement_block()
         ast_node.end = self.previous_token.end
         return ast_node
 

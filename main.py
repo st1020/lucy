@@ -1,4 +1,4 @@
-from lucy import Lexer, Parser, CodeGenerator, LVM, dump_code, load_code
+from lucy import Lexer, Parser, CodeGenerator, LVM
 
 # 词法解析 -> 语法解析 -> 代码生成 -> 虚拟机
 # lexer -> parser -> codegen -> lvm
@@ -44,8 +44,6 @@ if __name__ == '__main__':
     ast = par.parse()
     code = CodeGenerator(ast)
     code_program = code.generate()
-    code_program_dict = dump_code(code_program)
-    code_program = load_code(code_program_dict)
     lvm = LVM(code_program)
     lvm.run()
     pass

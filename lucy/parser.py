@@ -89,10 +89,10 @@ class Expression(ASTNode):
 
 
 class Literal(Expression):
-    def __init__(self, value: Union[str, int, float] = None,
+    def __init__(self, value: Union[None, bool, str, int, float] = None,
                  start: Location = None, end: Location = None):
         super().__init__(start=start, end=end)
-        self.value: Union[str, int, float] = value
+        self.value: Union[None, bool, str, int, float] = value
 
     def __repr__(self):
         return repr(self.value)
@@ -217,6 +217,18 @@ class GlobalStatement(Statement):
 
     def __repr__(self):
         return f'global {", ".join(map(lambda x: repr(x), self.arguments))};'
+
+
+class NonlocalStatement(Statement):
+    def __init__(self, arguments: List[Identifier] = None,
+                 start: Location = None, end: Location = None):
+        super().__init__(start=start, end=end)
+        if arguments is None:
+            arguments = list()
+        self.arguments: List[Identifier] = arguments
+
+    def __repr__(self):
+        return f'nonlocal {", ".join(map(lambda x: repr(x), self.arguments))};'
 
 
 class FunctionExpression(Expression):
@@ -440,16 +452,10 @@ class Parser:
             ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.GLOBAL:
             # global
-            ast_node = GlobalStatement()
-            ast_node.start = self.current_token.start
-            while self.current_token.type != TokenType.SEMI:
-                self.advance_token()
-                ast_node.arguments.append(self.parse_expression_identifier())
-                self.advance_token()
-                if self.current_token.type != TokenType.SEMI and self.current_token.type != TokenType.COMMA:
-                    raise self.error(expect_token_type=TokenType.COMMA)
-            self.advance_token()
-            ast_node.end = self.previous_token.end
+            ast_node = self.parse_global_nonlocal_statement(GlobalStatement())
+        elif self.current_token.type == TokenType.NONLOCAL:
+            # nonlocal
+            ast_node = self.parse_global_nonlocal_statement(NonlocalStatement())
         # func 不需要单独解析，通过 parse_expression 解析
         elif self.current_token.type == TokenType.LBRACE:
             # block
@@ -458,6 +464,18 @@ class Parser:
             ast_node = self.parse_expression()
             self.token_match(TokenType.SEMI)
             self.advance_token()
+        return ast_node
+
+    def parse_global_nonlocal_statement(self, ast_node: Union[GlobalStatement, NonlocalStatement]):
+        ast_node.start = self.current_token.start
+        while self.current_token.type != TokenType.SEMI:
+            self.advance_token()
+            ast_node.arguments.append(self.parse_expression_identifier())
+            self.advance_token()
+            if self.current_token.type != TokenType.SEMI and self.current_token.type != TokenType.COMMA:
+                raise self.error(expect_token_type=TokenType.COMMA)
+        self.advance_token()
+        ast_node.end = self.previous_token.end
         return ast_node
 
     def parse_statement_block(self):

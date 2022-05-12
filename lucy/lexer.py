@@ -37,6 +37,7 @@ class TokenType(Enum):
     GOTO = 'goto'
     RETURN = 'return'
     GLOBAL = 'global'
+    NONLOCAL = 'nonlocal'
 
     FUNC = 'func'
 

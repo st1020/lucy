@@ -16,6 +16,8 @@ class ErrorCode(Enum):
     UNSYNTACTIC_CONTINUE = 'Unsyntactic continue'
 
     # LVMError
+    TYPE_ERROR = 'Type Error'
+    NONLOCAL_ERROR = 'Nonlocal Error'
     LVM_ERROR = 'LVM Error'
 
 

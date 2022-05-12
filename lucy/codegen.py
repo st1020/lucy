@@ -45,10 +45,12 @@ class OPCodes(Enum):
     PUSH_LITERAL = OPCode('pushl', 1, ArgumentType.NUMBER)  # push(literal[A])
     TOP = OPCode('top', 1, ArgumentType.VARIABLE)  # A = top
     POP = OPCode('pop', 0, ArgumentType.NONE)  # pop
-    GLO = OPCode('glo', 1, ArgumentType.VARIABLE)  # A = &global(A)
+    GLOBAL = OPCode('global', 1, ArgumentType.VARIABLE)  # A = &global(A)
+    NONLOCAL = OPCode('nonlocal', 1, ArgumentType.VARIABLE)  # A = &nonlocal(A)
 
     NEW_TABLE = OPCode('new', 0, ArgumentType.NONE)  # push({})
-    GET_TABLE_TOP = OPCode('get', 0, ArgumentType.NONE)  # push(top[pop])
+    GET_TABLE = OPCode('get', 0, ArgumentType.NONE)  # push(pop[pop])
+    GET_TABLE_TOP = OPCode('gett', 0, ArgumentType.NONE)  # push(top[pop])
     SET_TABLE_TOP = OPCode('set', 0, ArgumentType.NONE)  # top[pop] := pop
     FOR = OPCode('for', 0, ArgumentType.NONE)  # 准备for循环，temp = pop:table，push(0:point)，push(temp)
     FOR_PRE = OPCode('forp', 0, ArgumentType.NONE)  # push(top:table 的当前指针指向的 key) 并且指针前进一格
@@ -279,7 +281,11 @@ class CodeGenerator:
         elif isinstance(ast_node, GlobalStatement):
             # global
             for argument in ast_node.arguments:
-                code_list.append(Code(OPCodes.GLO, argument.name))
+                code_list.append(Code(OPCodes.GLOBAL, argument.name))
+        elif isinstance(ast_node, NonlocalStatement):
+            # nonlocal
+            for argument in ast_node.arguments:
+                code_list.append(Code(OPCodes.NONLOCAL, argument.name))
         elif isinstance(ast_node, FunctionExpression):
             # func
             func = Function(len(ast_node.params))
@@ -335,10 +341,7 @@ class CodeGenerator:
             else:
                 assert isinstance(ast_node.property, Identifier)
                 code_list.append(Code(OPCodes.PUSH_LITERAL, self.add_literal_list(ast_node.property.name)))
-            code_list += [
-                Code(OPCodes.GET_TABLE_TOP),
-                Code(OPCodes.POP)
-            ]
+            code_list.append(Code(OPCodes.GET_TABLE))
         elif isinstance(ast_node, CallExpression):
             # 函数调用
             code_list += self.gen_code(ast_node.callee)

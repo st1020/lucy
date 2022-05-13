@@ -632,8 +632,7 @@ class Parser:
                 self.advance_token()
                 property_node.value = self.parse_expression()
             else:
-                property_node.key = Literal(str(count),
-                                            start=property_node.start, end=property_node.start)
+                property_node.key = Literal(count, start=property_node.start, end=property_node.start)
                 property_node.value = temp_expression
             count += 1
             property_node.end = self.previous_token.end

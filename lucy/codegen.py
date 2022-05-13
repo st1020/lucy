@@ -343,7 +343,6 @@ class CodeGenerator:
             elif isinstance(ast_node.left, MemberExpression):
                 code_list += self.gen_code(ast_node.left)
                 code_list.pop()
-                code_list.pop()
                 code_list += self.gen_code(ast_node.right)
                 code_list.append(Code(OPCodes.SET_TABLE_TOP))
         elif isinstance(ast_node, MemberExpression):

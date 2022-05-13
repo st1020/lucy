@@ -1,4 +1,4 @@
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Tuple
 
 from .exceptions import LVMError, ErrorCode
 from .codegen import CodeProgram, OPCodes, Function
@@ -8,6 +8,8 @@ BooleanData = bool
 IntegerData = int
 FloatData = float
 StringData = str
+
+HASHABLE_DATA_TYPE = (BooleanData, IntegerData, FloatData, StringData)
 
 
 class TableData(Dict['T_Data', 'T_Data']):
@@ -81,14 +83,32 @@ class LVM:
         self.global_stack_frame: StackFrame = StackFrame()
         self.call_stack: List[StackFrame] = [self.global_stack_frame]
 
+    @staticmethod
+    def check_type(value: T_Data, data_type: Tuple[type, ...]):
+        if not isinstance(value, data_type):
+            raise LVMError(ErrorCode.TYPE_ERROR, f'required {data_type}, but {type(value)} was given')
+
     def run(self):
-        def check_table_index(value_):
-            if isinstance(value_, str):
-                return value_
-            elif isinstance(value_, int) or isinstance(value_, float):
-                return str(value_)
+        def unsupported_operand_type(operator: str):
+            raise LVMError(ErrorCode.TYPE_ERROR,
+                           f'unsupported operand type(s) for {operator}: {type(arg1)} and {type(arg2)}')
+
+        def bool_only_operator(operator: str):
+            if isinstance(arg1, BooleanData):
+                if not isinstance(arg2, BooleanData):
+                    unsupported_operand_type(operator)
             else:
-                raise TypeError('table index must be string or number')
+                unsupported_operand_type(operator)
+
+        def number_only_operator(operator: str):
+            if isinstance(arg1, IntegerData):
+                if not isinstance(arg2, IntegerData):
+                    unsupported_operand_type(operator)
+            elif isinstance(arg1, FloatData):
+                if not isinstance(arg2, FloatData):
+                    unsupported_operand_type(operator)
+            else:
+                unsupported_operand_type(operator)
 
         while self.pc < len(self.code_list):
             current_opcode: OPCodes = self.code_list[self.pc].opcode
@@ -141,16 +161,22 @@ class LVM:
             elif current_opcode == OPCodes.GET_TABLE:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
-                current_operate_stack.append(arg1[check_table_index(arg2)])
+                self.check_type(arg1, (TableData,))
+                self.check_type(arg2, HASHABLE_DATA_TYPE)
+                current_operate_stack.append(arg1[arg2])
             elif current_opcode == OPCodes.GET_TABLE_TOP:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack[-1]
-                current_operate_stack.append(arg1[check_table_index(arg2)])
+                self.check_type(arg1, (TableData,))
+                self.check_type(arg2, HASHABLE_DATA_TYPE)
+                current_operate_stack.append(arg1[arg2])
             elif current_opcode == OPCodes.SET_TABLE_TOP:
                 arg3 = current_operate_stack.pop()
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack[-1]
-                arg1[check_table_index(arg2)] = arg3
+                self.check_type(arg1, (TableData,))
+                self.check_type(arg2, HASHABLE_DATA_TYPE)
+                arg1[arg2] = arg3
             elif current_opcode == OPCodes.FOR:
                 temp = current_operate_stack.pop()
                 current_operate_stack.append(0)
@@ -163,36 +189,65 @@ class LVM:
                 current_operate_stack[-2] += 1
                 current_operate_stack.append(key)
             elif current_opcode == OPCodes.NEG:
-                current_operate_stack.append(-current_operate_stack.pop())
+                arg1 = current_operate_stack.pop()
+                self.check_type(arg1, (IntegerData, FloatData))
+                current_operate_stack.append(-arg1)
             elif current_opcode == OPCodes.NOT:
-                current_operate_stack.append(not current_operate_stack.pop())
+                arg1 = current_operate_stack.pop()
+                self.check_type(arg1, (BooleanData,))
+                current_operate_stack.append(not arg1)
             elif current_opcode == OPCodes.ADD:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                if isinstance(arg1, IntegerData):
+                    if not isinstance(arg2, IntegerData):
+                        unsupported_operand_type('+')
+                elif isinstance(arg1, FloatData):
+                    if not isinstance(arg2, FloatData):
+                        unsupported_operand_type('+')
+                elif isinstance(arg1, StringData):
+                    if not isinstance(arg2, StringData):
+                        unsupported_operand_type('+')
+                else:
+                    unsupported_operand_type('+')
                 current_operate_stack.append(arg1 + arg2)
             elif current_opcode == OPCodes.SUB:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                number_only_operator('-')
                 current_operate_stack.append(arg1 - arg2)
             elif current_opcode == OPCodes.MUL:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                number_only_operator('*')
                 current_operate_stack.append(arg1 * arg2)
             elif current_opcode == OPCodes.DIV:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
-                current_operate_stack.append(arg1 / arg2)
+                if isinstance(arg1, IntegerData):
+                    if not isinstance(arg2, IntegerData):
+                        unsupported_operand_type('/')
+                    current_operate_stack.append(arg1 // arg2)
+                elif isinstance(arg1, FloatData):
+                    if not isinstance(arg2, FloatData):
+                        unsupported_operand_type('/')
+                    current_operate_stack.append(arg1 / arg2)
+                else:
+                    unsupported_operand_type('/')
             elif current_opcode == OPCodes.MOD:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                number_only_operator('%')
                 current_operate_stack.append(arg1 % arg2)
             elif current_opcode == OPCodes.AND:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                bool_only_operator('&&')
                 current_operate_stack.append(arg1 and arg2)
             elif current_opcode == OPCodes.OR:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                bool_only_operator('||')
                 current_operate_stack.append(arg1 or arg2)
             elif current_opcode == OPCodes.EQ:
                 arg2 = current_operate_stack.pop()
@@ -205,18 +260,22 @@ class LVM:
             elif current_opcode == OPCodes.LT:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                number_only_operator('<')
                 current_operate_stack.append(arg1 < arg2)
             elif current_opcode == OPCodes.LE:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                number_only_operator('<=')
                 current_operate_stack.append(arg1 <= arg2)
             elif current_opcode == OPCodes.GT:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                number_only_operator('>')
                 current_operate_stack.append(arg1 > arg2)
             elif current_opcode == OPCodes.GE:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
+                number_only_operator('>=')
                 current_operate_stack.append(arg1 >= arg2)
             elif current_opcode == OPCodes.JMP:
                 self.pc = current_argument

@@ -102,7 +102,8 @@ class LVM:
             if current_opcode == OPCodes.PUSH_LITERAL:
                 value = self.literal_list[current_argument]
                 if isinstance(value, Function):
-                    value = ClosureData(function=value, base_closure=current_closure)
+                    value = ClosureData(function=value,
+                                        base_closure=current_closure if value.should_closure else None)
                 current_operate_stack.append(value)
             elif current_opcode == OPCodes.PUSH:
                 target = current_variables[current_argument]

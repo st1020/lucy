@@ -5,17 +5,19 @@ from .exceptions import CodeGeneratorError, ErrorCode
 
 
 class Address:
-    address: int = None
+    address: Optional[int] = None
 
     def __repr__(self):
         return f'address({self.address!r})'
 
 
 class Function(Address):
-    def __init__(self, params_num: int, address: int = None):
+    def __init__(self, params_num: int, address: Optional[int] = None, base_function: Optional['Function'] = None):
         self.params_num: int = params_num
-        self.address = address
+        self.address: Optional[int] = address
         self.code_list: List[Union[Code, Address]] = list()
+        self.base_function: Optional[Function] = base_function
+        self.should_closure: bool = False
 
     def __repr__(self):
         return f'function({self.address!r})'
@@ -127,6 +129,7 @@ class CodeGenerator:
         self.ast: Program = ast
         self.code_list: List[Union[Code, Address]] = list()
         self.func_list: List[Function] = list()
+        self.func_stack: List[Optional[Function]] = [None]
 
         self.continue_label_list: List[Address] = list()
         self.break_label_list: List[Address] = list()
@@ -288,7 +291,8 @@ class CodeGenerator:
                 code_list.append(Code(OPCodes.NONLOCAL, argument.name))
         elif isinstance(ast_node, FunctionExpression):
             # func
-            func = Function(len(ast_node.params))
+            func = Function(params_num=len(ast_node.params), base_function=self.func_stack[-1])
+            self.func_stack.append(func)
             code_list.append(Code(OPCodes.PUSH_LITERAL, self.add_literal_list(func)))
             func.code_list.append(func)
             for param in reversed(ast_node.params):
@@ -300,7 +304,16 @@ class CodeGenerator:
                     Code(OPCodes.PUSH_LITERAL, self.add_literal_list(None)),
                     Code(OPCodes.RET)
                 ]
+            if not func.should_closure:
+                func.should_closure = any(map(lambda x: isinstance(x, Code) and x.opcode == OPCodes.NONLOCAL,
+                                              func.code_list))
+                if func.should_closure:
+                    temp = func.base_function
+                    while temp is not None:
+                        temp.should_closure = True
+                        temp = temp.base_function
             self.func_list.append(func)
+            self.func_stack.pop()
         elif isinstance(ast_node, TableExpression):
             # table {}
             code_list.append(Code(OPCodes.NEW_TABLE))

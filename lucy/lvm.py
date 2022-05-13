@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import List, Dict, Union, Optional
 
 from .exceptions import LVMError, ErrorCode
@@ -11,12 +10,18 @@ FloatData = float
 StringData = str
 
 
-class TableData(defaultdict, Dict['T_Data', 'T_Data']):
-    def __init__(self):
-        super().__init__(NullData)
+class TableData(Dict['T_Data', 'T_Data']):
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except KeyError:
+            return NullData()
 
-    def __repr__(self):
-        return repr(dict(self))
+    def __setitem__(self, key, value):
+        if isinstance(value, NullData):
+            del self[key]
+        else:
+            super().__setitem__(key, value)
 
 
 class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference', 'NonlocalReference']]):

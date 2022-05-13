@@ -73,6 +73,7 @@ class OPCodes(Enum):
     LE = OPCode('le', 0, ArgumentType.NONE)  # push(pop <= pop)
     GT = OPCode('gt', 0, ArgumentType.NONE)  # push(pop >  pop)
     GE = OPCode('ge', 0, ArgumentType.NONE)  # push(pop >= pop)
+    IS = OPCode('is', 0, ArgumentType.NONE)  # push(pop is pop)
 
     JMP = OPCode('jmp', 1, ArgumentType.NUMBER)  # PC := $A
     JT = OPCode('jt', 1, ArgumentType.NUMBER)  # if (pop == true) PC := $A
@@ -101,6 +102,7 @@ binary_operator_to_opcodes = {
     '>=': OPCodes.GE,
     '==': OPCodes.EQ,
     '!=': OPCodes.NE,
+    'is': OPCodes.IS,
     '&&': OPCodes.AND,
     '||': OPCodes.OR,
 }

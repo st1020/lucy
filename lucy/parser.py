@@ -13,31 +13,31 @@ class OperatorInfo:
 
 
 literal_const = [
-    OperatorInfo(TokenType.NULL, 10, True),  # null 字面量
-    OperatorInfo(TokenType.TRUE, 10, True),  # 布尔字面量
-    OperatorInfo(TokenType.FALSE, 10, True),  # 布尔字面量
-    OperatorInfo(TokenType.INTEGER, 10, True),  # 整数字面量
-    OperatorInfo(TokenType.FLOAT, 10, True),  # 浮点数字面量
-    OperatorInfo(TokenType.STRING, 10, True),  # 字符串字面量
+    OperatorInfo(TokenType.NULL, 11, True),  # null 字面量
+    OperatorInfo(TokenType.TRUE, 11, True),  # 布尔字面量
+    OperatorInfo(TokenType.FALSE, 11, True),  # 布尔字面量
+    OperatorInfo(TokenType.INTEGER, 11, True),  # 整数字面量
+    OperatorInfo(TokenType.FLOAT, 11, True),  # 浮点数字面量
+    OperatorInfo(TokenType.STRING, 11, True),  # 字符串字面量
 ]
 
 atom_operator_list = literal_const + [
-    OperatorInfo(TokenType.ID, 10, True),  # ID
-    OperatorInfo(TokenType.FUNC, 10, True),  # func 函数声明语法
-    OperatorInfo(TokenType.LBRACE, 10, True),  # { table 构造语法
+    OperatorInfo(TokenType.ID, 11, True),  # ID
+    OperatorInfo(TokenType.FUNC, 11, True),  # func 函数声明语法
+    OperatorInfo(TokenType.LBRACE, 11, True),  # { table 构造语法
 ]
 
 # 此类运算符仅能跟在原子之后
 primary_operator_list = [
-    OperatorInfo(TokenType.LPAREN, 9, True),  # ( 函数调用语法
-    OperatorInfo(TokenType.LBRACKET, 9, True),  # [ 成员引用语法
-    OperatorInfo(TokenType.POINT, 9, True),  # . 成员引用语法
+    OperatorInfo(TokenType.LPAREN, 10, True),  # ( 函数调用语法
+    OperatorInfo(TokenType.LBRACKET, 10, True),  # [ 成员引用语法
+    OperatorInfo(TokenType.POINT, 10, True),  # . 成员引用语法
 ]
 
 unary_operator_list = [
-    OperatorInfo(TokenType.ADD, 8, False),  # +
-    OperatorInfo(TokenType.SUB, 8, False),  # -
-    OperatorInfo(TokenType.NOT, 8, False),  # !
+    OperatorInfo(TokenType.ADD, 9, False),  # +
+    OperatorInfo(TokenType.SUB, 9, False),  # -
+    OperatorInfo(TokenType.NOT, 9, False),  # !
 ]
 
 assignment_operator_list = [
@@ -50,20 +50,22 @@ assignment_operator_list = [
 ]
 
 binary_operator_list = assignment_operator_list + [
-    OperatorInfo(TokenType.MUL, 7, True),  # *
-    OperatorInfo(TokenType.DIV, 7, True),  # /
-    OperatorInfo(TokenType.MOD, 7, True),  # %
+    OperatorInfo(TokenType.MUL, 8, True),  # *
+    OperatorInfo(TokenType.DIV, 8, True),  # /
+    OperatorInfo(TokenType.MOD, 8, True),  # %
 
-    OperatorInfo(TokenType.ADD, 6, True),  # +
-    OperatorInfo(TokenType.SUB, 6, True),  # -
+    OperatorInfo(TokenType.ADD, 7, True),  # +
+    OperatorInfo(TokenType.SUB, 7, True),  # -
 
-    OperatorInfo(TokenType.LESS, 5, True),  # <
-    OperatorInfo(TokenType.LESS_EQUAL, 5, True),  # <=
-    OperatorInfo(TokenType.GREATER, 5, True),  # >
-    OperatorInfo(TokenType.GREATER_EQUAL, 5, True),  # >=
+    OperatorInfo(TokenType.LESS, 6, True),  # <
+    OperatorInfo(TokenType.LESS_EQUAL, 6, True),  # <=
+    OperatorInfo(TokenType.GREATER, 6, True),  # >
+    OperatorInfo(TokenType.GREATER_EQUAL, 6, True),  # >=
 
-    OperatorInfo(TokenType.EQUAL, 4, True),  # ==
-    OperatorInfo(TokenType.NOT_EQUAL, 4, True),  # !=
+    OperatorInfo(TokenType.EQUAL, 5, True),  # ==
+    OperatorInfo(TokenType.NOT_EQUAL, 5, True),  # !=
+
+    OperatorInfo(TokenType.IS, 4, True),  # is
 
     OperatorInfo(TokenType.AND, 3, True),  # &&
     OperatorInfo(TokenType.OR, 2, True),  # ||

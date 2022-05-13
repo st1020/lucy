@@ -9,7 +9,7 @@ IntegerData = int
 FloatData = float
 StringData = str
 
-HASHABLE_DATA_TYPE = (BooleanData, IntegerData, FloatData, StringData)
+HASHABLE_DATA_TYPE = (NullData, BooleanData, IntegerData, FloatData, StringData)
 
 
 class TableData(Dict['T_Data', 'T_Data']):
@@ -280,6 +280,10 @@ class LVM:
                 arg1 = current_operate_stack.pop()
                 number_only_operator('>=')
                 current_operate_stack.append(arg1 >= arg2)
+            elif current_opcode == OPCodes.IS:
+                arg2 = current_operate_stack.pop()
+                arg1 = current_operate_stack.pop()
+                current_operate_stack.append(arg1 is arg2)
             elif current_opcode == OPCodes.JMP:
                 self.pc = current_argument
                 continue

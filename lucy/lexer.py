@@ -39,6 +39,8 @@ class TokenType(Enum):
     GLOBAL = 'global'
     NONLOCAL = 'nonlocal'
 
+    IS = 'is'
+
     FUNC = 'func'
 
     NULL = 'null'

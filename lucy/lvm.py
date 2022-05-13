@@ -21,7 +21,10 @@ class TableData(Dict['T_Data', 'T_Data']):
 
     def __setitem__(self, key, value):
         if isinstance(value, NullData):
-            del self[key]
+            try:
+                del self[key]
+            except KeyError:
+                pass
         else:
             super().__setitem__(key, value)
 

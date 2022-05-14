@@ -47,15 +47,14 @@ class OPCodes(Enum):
     LOAD_CONST = OPCode('LOAD_CONST', 1, ArgumentType.NUMBER)  # push(co_consts[consti])
     STORE = OPCode('STORE', 1, ArgumentType.VARIABLE)  # name = TOS
     POP = OPCode('POP', 0, ArgumentType.NONE)  # pop()
+    STORE_POP = OPCode('STORE_POP', 1, ArgumentType.VARIABLE)  # name = TOS, pop()
     GLOBAL = OPCode('GLOBAL', 1, ArgumentType.VARIABLE)  # name = &global(name)
 
     # 弹出 2 * count 项使得字典包含 count 个条目: {..., TOS3: TOS2, TOS1: TOS}
     BUILD_TABLE = OPCode('BUILD_TABLE', 1, ArgumentType.NUMBER)
     GET_TABLE = OPCode('GET_TABLE', 0, ArgumentType.NONE)  # TOS = TOS1[TOS]
-    GET_TABLE_TOP = OPCode('GET_TABLE_TOP', 0, ArgumentType.NONE)  # push(TOS1[TOS])
-    SET_TABLE_TOP = OPCode('SET_TABLE_TOP', 0, ArgumentType.NONE)  # TOS2[TOS1] = TOS
-    FOR = OPCode('FOR', 0, ArgumentType.NONE)  # 准备for循环，temp = pop:table，push(0:point)，push(temp)
-    FOR_PRE = OPCode('FOR_PRE', 0, ArgumentType.NONE)  # push(top:table 的当前指针指向的 key) 并且指针前进一格
+    SET_TABLE = OPCode('SET_TABLE', 0, ArgumentType.NONE)  # TOS2[TOS1] = TOS
+    FOR = OPCode('FOR', 1, ArgumentType.NUMBER)  # push(call(TOS)) 如果 TOS 无下个迭代项，则 pop() 并 JUMP 到 target
 
     NEG = OPCode('NEG', 0, ArgumentType.NONE)  # TOS = -TOS
     NOT = OPCode('NOT', 0, ArgumentType.NONE)  # TOS = not TOS
@@ -72,7 +71,6 @@ class OPCodes(Enum):
     JUMP = OPCode('JUMP', 1, ArgumentType.NUMBER)  # PC = target
     JUMP_IF_TRUE = OPCode('JUMP_IF_TRUE', 1, ArgumentType.NUMBER)  # if (TOS == true) PC = target, pop(TOS)
     JUMP_IF_FALSE = OPCode('JUMP_IF_FALSE', 1, ArgumentType.NUMBER)  # if (TOS == false) PC = target, pop(TOS)
-    JUMP_IF_NULL = OPCode('JUMP_IF_NULL', 1, ArgumentType.NUMBER)  # if (TOS == null) PC = target, pop(TOS)
     JUMP_IF_TRUE_OR_POP = OPCode('JUMP_IF_TRUE_OR_POP', 1, ArgumentType.NUMBER)
     JUMP_IF_FALSE_OR_POP = OPCode('JUMP_IF_FALSE_OR_POP', 1, ArgumentType.NUMBER)
 
@@ -219,7 +217,7 @@ class CodeGenerator:
             code_list += self.gen_code_statement(ast_node.body)
             code_list += [
                 Code(OPCodes.JUMP, continue_label),
-                break_label
+                break_label,
             ]
             self.continue_label_list.pop()
             self.break_label_list.pop()
@@ -231,22 +229,15 @@ class CodeGenerator:
             self.break_label_list.append(break_label)
             code_list += self.gen_code(ast_node.right)
             code_list += [
-                Code(OPCodes.FOR),
                 continue_label,
-                Code(OPCodes.FOR_PRE),
-                Code(OPCodes.STORE, ast_node.left1.name),
-                Code(OPCodes.JUMP_IF_NULL, break_label),
-                Code(OPCodes.GET_TABLE_TOP),
-                Code(OPCodes.STORE, ast_node.left2.name),
-                Code(OPCodes.POP)
+                Code(OPCodes.FOR, break_label),
+                Code(OPCodes.STORE_POP, ast_node.left.name),
             ]
             code_list += self.gen_code_statement(ast_node.body)
             code_list += [
                 Code(OPCodes.JUMP, continue_label),
                 break_label,
-                Code(OPCodes.POP),  # 清除临时指针
-                Code(OPCodes.POP),  # 当前 table 出栈
-                Code(OPCodes.POP)  # 临时指针出栈
+                Code(OPCodes.POP),
             ]
             self.continue_label_list.pop()
             self.break_label_list.pop()
@@ -287,13 +278,12 @@ class CodeGenerator:
             code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(func)))
             func.code_list.append(func)
             for param in reversed(ast_node.params):
-                func.code_list.append(Code(OPCodes.STORE, param.name))
-                func.code_list.append(Code(OPCodes.POP))
+                func.code_list.append(Code(OPCodes.STORE_POP, param.name))
             func.code_list += self.gen_code_statement(ast_node.body)
             if not isinstance(func.code_list[-1], Code) or func.code_list[-1].opcode != OPCodes.RETURN.value:
                 func.code_list += [
                     Code(OPCodes.LOAD_CONST, self.add_literal_list(None)),
-                    Code(OPCodes.RETURN)
+                    Code(OPCodes.RETURN),
                 ]
             self.func_list.append(func)
             self.func_stack.pop()
@@ -339,7 +329,7 @@ class CodeGenerator:
                 code_list += self.gen_code(ast_node.left)
                 code_list.pop()
                 code_list += self.gen_code(ast_node.right)
-                code_list.append(Code(OPCodes.SET_TABLE_TOP))
+                code_list.append(Code(OPCodes.SET_TABLE))
         elif isinstance(ast_node, MemberExpression):
             # 取成员
             code_list += self.gen_code(ast_node.table)

@@ -167,17 +167,15 @@ class WhileStatement(LoopStatement):
 
 
 class ForStatement(Statement):
-    def __init__(self,
-                 left1: Identifier = None, left2: Identifier = None, right: Expression = None, body: Statement = None,
+    def __init__(self, left: Identifier = None, right: Expression = None, body: Statement = None,
                  start: Location = None, end: Location = None):
         super().__init__(start=start, end=end)
-        self.left1: Identifier = left1
-        self.left2: Identifier = left2
+        self.left: Identifier = left
         self.right: Expression = right
         self.body: Statement = body
 
     def __repr__(self):
-        return f'for({self.left1!r}, {self.left2!r} in {self.right!r}){self.body}'
+        return f'for({self.left!r} in {self.right!r}){self.body}'
 
 
 class BreakStatement(Statement):
@@ -393,10 +391,7 @@ class Parser:
             ast_node = ForStatement()
             ast_node.start = self.current_token.start
             self.advance_token()
-            ast_node.left1 = self.parse_expression_identifier()
-            self.advance_token_match(TokenType.COMMA)
-            self.advance_token()
-            ast_node.left2 = self.parse_expression_identifier()
+            ast_node.left = self.parse_expression_identifier()
             self.advance_token_match(TokenType.IN)
             self.advance_token()
             ast_node.right = self.parse_expression()

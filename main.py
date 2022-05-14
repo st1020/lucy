@@ -3,40 +3,22 @@ from lucy import Lexer, Parser, CodeGenerator, LVM
 # 词法解析 -> 语法解析 -> 代码生成 -> 虚拟机
 # lexer -> parser -> codegen -> lvm
 
+
 if __name__ == '__main__':
     code = r'''
-    test_func = func () {
-    };
-    test_1 = true;
-    test_1 = {'a': 1, "b": {1, 2}};
-    test_1.a = 2;
-    test_2 = {1, 2, 3};
-    main = func (a, b) {
-        global t;
-        a = 0;
-        a = a + 1;
-        t = {"a": a + 110, "b": 2};
-        return 1 + 1;
-    };
-    a = 0;
-    while a != 10 {
-        a = a + 1;
-        if a == 4 {
-            d = "123";
-            c = null;
-            f = false;
-            if !f {
-                e = true;
-                break;
+    a = func () {
+        t = 0;
+        return || {
+            t = t + 1;
+            if t > 100 {
+                return null;
             }
-        } else {
-            d = 1;
-        }
-    }
-    re = main(1, 2);
-    lll = {};
-    for k, v in t {
-        lll[v] = k;
+            return t * 2;
+        };
+    };
+    l = {};
+    for i in a() {
+        l[i] = i;
     }
     '''
     lex = Lexer(code)

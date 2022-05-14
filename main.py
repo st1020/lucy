@@ -9,7 +9,7 @@ if __name__ == '__main__':
     a = func () {
         t = 0;
         return || {
-            t = t + 1;
+            t += 1;
             if t > 100 {
                 return null;
             }

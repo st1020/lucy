@@ -323,12 +323,22 @@ class CodeGenerator:
         elif isinstance(ast_node, AssignmentExpression):
             # 赋值
             if isinstance(ast_node.left, Identifier):
-                code_list += self.gen_code(ast_node.right)
+                if ast_node.operator == '=':
+                    code_list += self.gen_code(ast_node.right)
+                else:
+                    code_list += self.gen_code(ast_node.left)
+                    code_list += self.gen_code(ast_node.right)
+                    code_list.append(Code(binary_operator_to_opcodes[ast_node.operator[0]]))
                 code_list.append(Code(OPCodes.STORE, ast_node.left.name))
             elif isinstance(ast_node.left, MemberExpression):
                 code_list += self.gen_code(ast_node.left)
                 code_list.pop()
-                code_list += self.gen_code(ast_node.right)
+                if ast_node.operator == '=':
+                    code_list += self.gen_code(ast_node.right)
+                else:
+                    code_list += self.gen_code(ast_node.left)
+                    code_list += self.gen_code(ast_node.right)
+                    code_list.append(Code(binary_operator_to_opcodes[ast_node.operator[0]]))
                 code_list.append(Code(OPCodes.SET_TABLE))
         elif isinstance(ast_node, MemberExpression):
             # 取成员

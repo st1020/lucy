@@ -1,7 +1,7 @@
 from typing import List, Dict, Union, Optional, Tuple
 
 from .exceptions import LVMError, ErrorCode
-from .codegen import CodeProgram, OPCodes, Function
+from .codegen import CodeProgram, OPCodes, Function, cmp_op
 
 NullData = type(None)
 BooleanData = bool
@@ -122,20 +122,20 @@ class LVM:
             current_return_address = self.call_stack[-1].return_address
             current_closure = self.call_stack[-1].closure
 
-            if current_opcode == OPCodes.PUSH_LITERAL:
+            if current_opcode == OPCodes.LOAD_CONST:
                 value = self.literal_list[current_argument]
                 if isinstance(value, Function):
                     value = ClosureData(function=value,
                                         base_closure=current_closure if value.should_closure else None)
                 current_operate_stack.append(value)
-            elif current_opcode == OPCodes.PUSH:
+            elif current_opcode == OPCodes.LOAD_NAME:
                 target = current_variables[current_argument]
                 if isinstance(target, GlobalReference):
                     target = self.global_stack_frame.variables[current_argument]
                 elif isinstance(target, NonlocalReference):
                     target = target.ref_closure.variables[current_argument]
                 current_operate_stack.append(target)
-            elif current_opcode == OPCodes.TOP:
+            elif current_opcode == OPCodes.STORE:
                 if isinstance(current_variables[current_argument], GlobalReference):
                     temp = self.global_stack_frame.variables
                 elif isinstance(current_variables[current_argument], NonlocalReference):
@@ -252,50 +252,39 @@ class LVM:
                 arg1 = current_operate_stack.pop()
                 bool_only_operator('||')
                 current_operate_stack.append(arg1 or arg2)
-            elif current_opcode == OPCodes.EQ:
+            elif current_opcode == OPCodes.COMPARE_OP:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
-                current_operate_stack.append(arg1 == arg2)
-            elif current_opcode == OPCodes.NE:
-                arg2 = current_operate_stack.pop()
-                arg1 = current_operate_stack.pop()
-                current_operate_stack.append(arg1 != arg2)
-            elif current_opcode == OPCodes.LT:
-                arg2 = current_operate_stack.pop()
-                arg1 = current_operate_stack.pop()
-                number_only_operator('<')
-                current_operate_stack.append(arg1 < arg2)
-            elif current_opcode == OPCodes.LE:
-                arg2 = current_operate_stack.pop()
-                arg1 = current_operate_stack.pop()
-                number_only_operator('<=')
-                current_operate_stack.append(arg1 <= arg2)
-            elif current_opcode == OPCodes.GT:
-                arg2 = current_operate_stack.pop()
-                arg1 = current_operate_stack.pop()
-                number_only_operator('>')
-                current_operate_stack.append(arg1 > arg2)
-            elif current_opcode == OPCodes.GE:
-                arg2 = current_operate_stack.pop()
-                arg1 = current_operate_stack.pop()
-                number_only_operator('>=')
-                current_operate_stack.append(arg1 >= arg2)
+                if cmp_op[current_argument] != '==' and cmp_op[current_argument] != '!=':
+                    number_only_operator(cmp_op[current_argument])
+                if cmp_op[current_argument] == '==':
+                    current_operate_stack.append(arg1 == arg2)
+                elif cmp_op[current_argument] == '!=':
+                    current_operate_stack.append(arg1 != arg2)
+                elif cmp_op[current_argument] == '<':
+                    current_operate_stack.append(arg1 < arg2)
+                elif cmp_op[current_argument] == '<=':
+                    current_operate_stack.append(arg1 <= arg2)
+                elif cmp_op[current_argument] == '>':
+                    current_operate_stack.append(arg1 > arg2)
+                elif cmp_op[current_argument] == '>=':
+                    current_operate_stack.append(arg1 >= arg2)
             elif current_opcode == OPCodes.IS:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
                 current_operate_stack.append(arg1 is arg2)
-            elif current_opcode == OPCodes.JMP:
+            elif current_opcode == OPCodes.JUMP:
                 self.pc = current_argument
                 continue
-            elif current_opcode == OPCodes.JT:
+            elif current_opcode == OPCodes.JUMP_IF_TRUE:
                 if current_operate_stack.pop() is True:
                     self.pc = current_argument
                     continue
-            elif current_opcode == OPCodes.JF:
+            elif current_opcode == OPCodes.JUMP_IF_FALSE:
                 if current_operate_stack.pop() is False:
                     self.pc = current_argument
                     continue
-            elif current_opcode == OPCodes.JN:
+            elif current_opcode == OPCodes.JUMP_IF_NULL:
                 if current_operate_stack[-1] is None:
                     self.pc = current_argument
                     continue
@@ -328,7 +317,7 @@ class LVM:
                 ))
                 self.pc = closure.function.address
                 continue
-            elif current_opcode == OPCodes.RET:
+            elif current_opcode == OPCodes.RETURN:
                 return_value = current_operate_stack.pop()
                 self.pc = current_return_address
                 self.call_stack.pop()

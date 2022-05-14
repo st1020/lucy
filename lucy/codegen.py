@@ -43,52 +43,51 @@ class OPCode:
 
 
 class OPCodes(Enum):
-    PUSH = OPCode('push', 1, ArgumentType.VARIABLE)  # push(A)
-    PUSH_LITERAL = OPCode('pushl', 1, ArgumentType.NUMBER)  # push(literal[A])
-    TOP = OPCode('top', 1, ArgumentType.VARIABLE)  # A = top
-    POP = OPCode('pop', 0, ArgumentType.NONE)  # pop
-    GLOBAL = OPCode('global', 1, ArgumentType.VARIABLE)  # A = &global(A)
-    NONLOCAL = OPCode('nonlocal', 1, ArgumentType.VARIABLE)  # A = &nonlocal(A)
+    LOAD_NAME = OPCode('LOAD_NAME', 1, ArgumentType.VARIABLE)  # push(name)
+    LOAD_CONST = OPCode('LOAD_CONST', 1, ArgumentType.NUMBER)  # push(co_consts[consti])
+    STORE = OPCode('STORE', 1, ArgumentType.VARIABLE)  # name = TOS
+    POP = OPCode('POP', 0, ArgumentType.NONE)  # pop()
+    GLOBAL = OPCode('GLOBAL', 1, ArgumentType.VARIABLE)  # name = &global(name)
+    NONLOCAL = OPCode('NONLOCAL', 1, ArgumentType.VARIABLE)  # name = &nonlocal(name)
 
-    NEW_TABLE = OPCode('new', 0, ArgumentType.NONE)  # push({})
-    GET_TABLE = OPCode('get', 0, ArgumentType.NONE)  # push(pop[pop])
-    GET_TABLE_TOP = OPCode('gett', 0, ArgumentType.NONE)  # push(top[pop])
-    SET_TABLE_TOP = OPCode('set', 0, ArgumentType.NONE)  # top[pop] := pop
-    FOR = OPCode('for', 0, ArgumentType.NONE)  # 准备for循环，temp = pop:table，push(0:point)，push(temp)
-    FOR_PRE = OPCode('forp', 0, ArgumentType.NONE)  # push(top:table 的当前指针指向的 key) 并且指针前进一格
+    NEW_TABLE = OPCode('NEW_TABLE', 0, ArgumentType.NONE)  # push({})
+    GET_TABLE = OPCode('GET_TABLE', 0, ArgumentType.NONE)  # TOS = TOS1[TOS]
+    GET_TABLE_TOP = OPCode('GET_TABLE_TOP', 0, ArgumentType.NONE)  # push(TOS1[TOS])
+    SET_TABLE_TOP = OPCode('SET_TABLE_TOP', 0, ArgumentType.NONE)  # TOS2[TOS1] = TOS
+    FOR = OPCode('FOR', 0, ArgumentType.NONE)  # 准备for循环，temp = pop:table，push(0:point)，push(temp)
+    FOR_PRE = OPCode('FOR_PRE', 0, ArgumentType.NONE)  # push(top:table 的当前指针指向的 key) 并且指针前进一格
 
-    NEG = OPCode('neg', 0, ArgumentType.NONE)  # push(-pop)
-    NOT = OPCode('not', 0, ArgumentType.NONE)  # push(!pop)
+    NEG = OPCode('NEG', 0, ArgumentType.NONE)  # TOS = -TOS
+    NOT = OPCode('NOT', 0, ArgumentType.NONE)  # TOS = not TOS
 
-    ADD = OPCode('add', 0, ArgumentType.NONE)  # push(pop + pop)
-    SUB = OPCode('sub', 0, ArgumentType.NONE)  # push(pop - pop)
-    MUL = OPCode('mul', 0, ArgumentType.NONE)  # push(pop * pop)
-    DIV = OPCode('div', 0, ArgumentType.NONE)  # push(pop / pop)
-    MOD = OPCode('mod', 0, ArgumentType.NONE)  # push(pop % pop)
-    EQ = OPCode('eq', 0, ArgumentType.NONE)  # push(pop == pop)
-    NE = OPCode('ne', 0, ArgumentType.NONE)  # push(pop != pop)
-    LT = OPCode('lt', 0, ArgumentType.NONE)  # push(pop <  pop)
-    LE = OPCode('le', 0, ArgumentType.NONE)  # push(pop <= pop)
-    GT = OPCode('gt', 0, ArgumentType.NONE)  # push(pop >  pop)
-    GE = OPCode('ge', 0, ArgumentType.NONE)  # push(pop >= pop)
-    IS = OPCode('is', 0, ArgumentType.NONE)  # push(pop is pop)
-    AND = OPCode('and', 0, ArgumentType.NONE)  # push(pop and pop)
-    OR = OPCode('or', 0, ArgumentType.NONE)  # push(pop or pop)
+    ADD = OPCode('ADD', 0, ArgumentType.NONE)  # TOS = TOS1 + TOS
+    SUB = OPCode('SUB', 0, ArgumentType.NONE)  # TOS = TOS1 - TOS
+    MUL = OPCode('MUL', 0, ArgumentType.NONE)  # TOS = TOS1 * TOS
+    DIV = OPCode('DIV', 0, ArgumentType.NONE)  # TOS = TOS1 / TOS
+    MOD = OPCode('MOD', 0, ArgumentType.NONE)  # TOS = TOS1 % TOS
 
-    JMP = OPCode('jmp', 1, ArgumentType.NUMBER)  # PC := $A
-    JT = OPCode('jt', 1, ArgumentType.NUMBER)  # if (pop == true) PC := $A
-    JF = OPCode('jf', 1, ArgumentType.NUMBER)  # if (pop == false) PC := $A
-    JN = OPCode('jn', 1, ArgumentType.NUMBER)  # if (top == null) PC := $A
+    COMPARE_OP = OPCode('COMPARE_OP', 1, ArgumentType.NUMBER)  # TOS = TOS1 (cmp_op[opname]) TOS
 
-    # call 和 goto 第一步都是创建新的栈帧，并且依次从当前栈中 pop $A 个参数 push 进新的栈
-    CALL = OPCode('call', 1, ArgumentType.NUMBER)  # call 调用新的函数，设置新的栈帧返回地址为自身下一条语句，进入新的栈帧 jmp pop
-    GOTO = OPCode('goto', 1, ArgumentType.NUMBER)  # goto 调用新的函数，设置新的栈帧返回地址为当前的返回地址，进入新的栈帧 jmp pop，并销毁当前栈帧
-    RET = OPCode('ret', 0, ArgumentType.NONE)  # return 返回并销毁当前栈帧，返回值为 pop
-    EXIT = OPCode('exit', 0, ArgumentType.NONE)  # exit 退出
+    IS = OPCode('IS', 0, ArgumentType.NONE)  # TOS = TOS1 is TOS
+    AND = OPCode('AND', 0, ArgumentType.NONE)  # TOS = TOS1 and TOS
+    OR = OPCode('OR', 0, ArgumentType.NONE)  # TOS = TOS1 or TOS
+
+    JUMP = OPCode('JUMP', 1, ArgumentType.NUMBER)  # PC = target
+    JUMP_IF_TRUE = OPCode('JUMP_IF_TRUE', 1, ArgumentType.NUMBER)  # if (TOS == true) PC = target
+    JUMP_IF_FALSE = OPCode('JUMP_IF_FALSE', 1, ArgumentType.NUMBER)  # if (TOS == false) PC = target
+    JUMP_IF_NULL = OPCode('JUMP_IF_NULL', 1, ArgumentType.NUMBER)  # if (TOS == null) PC = target
+
+    # call 和 goto 第一步都是创建新的栈帧，并且依次从当前栈中 pop number 个参数 push 进新的栈
+    CALL = OPCode('CALL', 1, ArgumentType.NUMBER)  # call 调用新的函数，设置新的栈帧返回地址为自身下一条语句，进入新的栈帧 jmp pop
+    GOTO = OPCode('GOTO', 1, ArgumentType.NUMBER)  # goto 调用新的函数，设置新的栈帧返回地址为当前的返回地址，进入新的栈帧 jmp pop，并销毁当前栈帧
+    RETURN = OPCode('RETURN', 0, ArgumentType.NONE)  # return 返回并销毁当前栈帧，返回值为 pop
+    EXIT = OPCode('EXIT', 0, ArgumentType.NONE)  # exit 退出
 
     def __repr__(self):
         return repr(self.value)
 
+
+cmp_op = ['<', '<=', '==', '!=', '>', '>=']
 
 binary_operator_to_opcodes = {
     '*': OPCodes.MUL,
@@ -96,12 +95,6 @@ binary_operator_to_opcodes = {
     '+': OPCodes.ADD,
     '%': OPCodes.MOD,
     '-': OPCodes.SUB,
-    '<': OPCodes.LT,
-    '<=': OPCodes.LE,
-    '>': OPCodes.GT,
-    '>=': OPCodes.GE,
-    '==': OPCodes.EQ,
-    '!=': OPCodes.NE,
     'is': OPCodes.IS,
     'and': OPCodes.AND,
     'or': OPCodes.OR,
@@ -175,10 +168,10 @@ class CodeGenerator:
         code_list = list()
         if isinstance(ast_node, Literal):
             # Literal
-            code_list.append(Code(OPCodes.PUSH_LITERAL, self.add_literal_list(ast_node.value)))
+            code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(ast_node.value)))
         elif isinstance(ast_node, Identifier):
             # Identifier
-            code_list.append(Code(OPCodes.PUSH, ast_node.name))
+            code_list.append(Code(OPCodes.LOAD_NAME, ast_node.name))
         elif isinstance(ast_node, Property):
             # Property
             raise CodeGeneratorError(ErrorCode.UNEXPECTED_AST_NODE)
@@ -191,9 +184,9 @@ class CodeGenerator:
             # if (...) <statement> [else <statement>]
             #
             #   if (<cond>)                   <cond>
-            #                                 JZ a
+            #                                 JUMP_IF_FALSE a
             #     <true_statement>   ===>     <true_statement>
-            #   else:                         JMP b
+            #   else:                         JUMP b
             # a:                           a:
             #     <false_statement>           <false_statement>
             # b:                           b:
@@ -203,9 +196,9 @@ class CodeGenerator:
             else:
                 end_label = Address()
             code_list += self.gen_code(ast_node.test)
-            code_list.append(Code(OPCodes.JF, false_label))
+            code_list.append(Code(OPCodes.JUMP_IF_FALSE, false_label))
             code_list += self.gen_code_statement(ast_node.consequent)
-            code_list.append(Code(OPCodes.JMP, end_label))
+            code_list.append(Code(OPCodes.JUMP, end_label))
             code_list.append(false_label)
             if ast_node.alternate is not None:
                 code_list += self.gen_code_statement(ast_node.alternate)
@@ -214,9 +207,9 @@ class CodeGenerator:
             # loop | while
             # a:                     a:
             #    while (<cond>)        <cond>
-            #                          JZ b
+            #                          JUMP_IF_FALSE b
             #     <statement>          <statement>
-            #                          JMP a
+            #                          JUMP a
             # b:                     b:
             continue_label = Address()
             break_label = Address()
@@ -225,10 +218,10 @@ class CodeGenerator:
             code_list.append(continue_label)
             if isinstance(ast_node, WhileStatement):
                 code_list += self.gen_code(ast_node.test)
-                code_list.append(Code(OPCodes.JF, break_label))
+                code_list.append(Code(OPCodes.JUMP_IF_FALSE, break_label))
             code_list += self.gen_code_statement(ast_node.body)
             code_list += [
-                Code(OPCodes.JMP, continue_label),
+                Code(OPCodes.JUMP, continue_label),
                 break_label
             ]
             self.continue_label_list.pop()
@@ -244,15 +237,15 @@ class CodeGenerator:
                 Code(OPCodes.FOR),
                 continue_label,
                 Code(OPCodes.FOR_PRE),
-                Code(OPCodes.TOP, ast_node.left1.name),
-                Code(OPCodes.JN, break_label),
+                Code(OPCodes.STORE, ast_node.left1.name),
+                Code(OPCodes.JUMP_IF_NULL, break_label),
                 Code(OPCodes.GET_TABLE_TOP),
-                Code(OPCodes.TOP, ast_node.left2.name),
+                Code(OPCodes.STORE, ast_node.left2.name),
                 Code(OPCodes.POP)
             ]
             code_list += self.gen_code_statement(ast_node.body)
             code_list += [
-                Code(OPCodes.JMP, continue_label),
+                Code(OPCodes.JUMP, continue_label),
                 break_label,
                 Code(OPCodes.POP),  # 清除临时指针
                 Code(OPCodes.POP),  # 当前 table 出栈
@@ -264,12 +257,12 @@ class CodeGenerator:
             # break
             if len(self.break_label_list) == 0:
                 raise CodeGeneratorError(ErrorCode.UNSYNTACTIC_BREAK, message=repr(ast_node))
-            code_list.append(Code(OPCodes.JMP, self.break_label_list[-1]))
+            code_list.append(Code(OPCodes.JUMP, self.break_label_list[-1]))
         elif isinstance(ast_node, ContinueStatement):
             # continue
             if len(self.continue_label_list) == 0:
                 raise CodeGeneratorError(ErrorCode.UNSYNTACTIC_CONTINUE, message=repr(ast_node))
-            code_list.append(Code(OPCodes.JMP, self.continue_label_list[-1]))
+            code_list.append(Code(OPCodes.JUMP, self.continue_label_list[-1]))
         elif isinstance(ast_node, GotoStatement):
             # goto
             for argument in ast_node.argument.arguments:
@@ -279,10 +272,10 @@ class CodeGenerator:
         elif isinstance(ast_node, ReturnStatement):
             # return
             if ast_node.argument is None:
-                code_list.append(Code(OPCodes.PUSH_LITERAL, self.add_literal_list(None)))
+                code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(None)))
             else:
                 code_list += self.gen_code(ast_node.argument)
-            code_list.append(Code(OPCodes.RET))
+            code_list.append(Code(OPCodes.RETURN))
         elif isinstance(ast_node, GlobalStatement):
             # global
             for argument in ast_node.arguments:
@@ -295,16 +288,16 @@ class CodeGenerator:
             # func
             func = Function(params_num=len(ast_node.params), base_function=self.func_stack[-1])
             self.func_stack.append(func)
-            code_list.append(Code(OPCodes.PUSH_LITERAL, self.add_literal_list(func)))
+            code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(func)))
             func.code_list.append(func)
             for param in reversed(ast_node.params):
-                func.code_list.append(Code(OPCodes.TOP, param.name))
+                func.code_list.append(Code(OPCodes.STORE, param.name))
                 func.code_list.append(Code(OPCodes.POP))
             func.code_list += self.gen_code_statement(ast_node.body)
-            if not isinstance(func.code_list[-1], Code) or func.code_list[-1].opcode != OPCodes.RET.value:
+            if not isinstance(func.code_list[-1], Code) or func.code_list[-1].opcode != OPCodes.RETURN.value:
                 func.code_list += [
-                    Code(OPCodes.PUSH_LITERAL, self.add_literal_list(None)),
-                    Code(OPCodes.RET)
+                    Code(OPCodes.LOAD_CONST, self.add_literal_list(None)),
+                    Code(OPCodes.RETURN)
                 ]
             if not func.should_closure:
                 func.should_closure = any(map(lambda x: isinstance(x, Code) and x.opcode == OPCodes.NONLOCAL,
@@ -336,12 +329,15 @@ class CodeGenerator:
             # 二元运算
             code_list += self.gen_code(ast_node.left)
             code_list += self.gen_code(ast_node.right)
-            code_list.append(Code(binary_operator_to_opcodes[ast_node.operator]))
+            if ast_node.operator in cmp_op:
+                code_list.append(Code(OPCodes.COMPARE_OP, cmp_op.index(ast_node.operator)))
+            else:
+                code_list.append(Code(binary_operator_to_opcodes[ast_node.operator]))
         elif isinstance(ast_node, AssignmentExpression):
             # 赋值
             if isinstance(ast_node.left, Identifier):
                 code_list += self.gen_code(ast_node.right)
-                code_list.append(Code(OPCodes.TOP, ast_node.left.name))
+                code_list.append(Code(OPCodes.STORE, ast_node.left.name))
             elif isinstance(ast_node.left, MemberExpression):
                 code_list += self.gen_code(ast_node.left)
                 code_list.pop()
@@ -354,7 +350,7 @@ class CodeGenerator:
                 code_list += self.gen_code(ast_node.property)
             else:
                 assert isinstance(ast_node.property, Identifier)
-                code_list.append(Code(OPCodes.PUSH_LITERAL, self.add_literal_list(ast_node.property.name)))
+                code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(ast_node.property.name)))
             code_list.append(Code(OPCodes.GET_TABLE))
         elif isinstance(ast_node, CallExpression):
             # 函数调用

@@ -17,7 +17,6 @@ class ErrorCode(Enum):
 
     # LVMError
     TYPE_ERROR = 'Type Error'
-    NONLOCAL_ERROR = 'Nonlocal Error'
     LVM_ERROR = 'LVM Error'
 
 

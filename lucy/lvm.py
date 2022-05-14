@@ -29,18 +29,15 @@ class TableData(Dict['T_Data', 'T_Data']):
             super().__setitem__(key, value)
 
 
-class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference', 'NonlocalReference']]):
+class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference']]):
     pass
 
 
 class ClosureData:
-    def __init__(self,
-                 function: Function,
-                 base_closure: Optional['ClosureData'],
-                 variables: Optional[VariablesDict] = None):
-        self.function: Function = function
+    def __init__(self, function: Optional[Function], base_closure: Optional['ClosureData'] = None):
+        self.function: Optional[Function] = function
         self.base_closure: Optional[ClosureData] = base_closure
-        self._variables: Optional[VariablesDict] = variables
+        self._variables: Optional[VariablesDict] = None
 
     @property
     def variables(self):
@@ -61,18 +58,9 @@ class GlobalReference:
         return cls.obj
 
 
-class NonlocalReference:
-    def __init__(self, ref_closure: ClosureData):
-        self.ref_closure = ref_closure
-
-
 class StackFrame:
-    def __init__(self,
-                 closure: Optional[ClosureData] = None,
-                 operate_stack: List[T_Data] = None,
-                 return_address: int = 0):
-        self.closure: Optional[ClosureData] = closure
-        self.variables: VariablesDict = self.closure.variables if self.closure is not None else VariablesDict()
+    def __init__(self, closure: ClosureData, operate_stack: List[T_Data] = None, return_address: int = 0):
+        self.closure: ClosureData = closure
         self.operate_stack: List[T_Data] = operate_stack if operate_stack is not None else list()
         self.return_address: int = return_address
 
@@ -83,7 +71,7 @@ class LVM:
         self.code_list = self.code_program.code_list
         self.literal_list = self.code_program.literal_list
         self.pc: int = 0
-        self.global_stack_frame: StackFrame = StackFrame()
+        self.global_stack_frame: StackFrame = StackFrame(ClosureData(None))
         self.call_stack: List[StackFrame] = [self.global_stack_frame]
 
     @staticmethod
@@ -111,30 +99,38 @@ class LVM:
             current_argument = self.code_list[self.pc].argument
 
             current_operate_stack = self.call_stack[-1].operate_stack
-            current_variables = self.call_stack[-1].variables
+            current_variables = self.call_stack[-1].closure.variables
             current_return_address = self.call_stack[-1].return_address
             current_closure = self.call_stack[-1].closure
 
             if current_opcode == OPCodes.LOAD_CONST:
                 value = self.literal_list[current_argument]
                 if isinstance(value, Function):
-                    value = ClosureData(function=value,
-                                        base_closure=current_closure if value.should_closure else None)
+                    value = ClosureData(function=value, base_closure=current_closure if value.is_closure else None)
                 current_operate_stack.append(value)
             elif current_opcode == OPCodes.LOAD_NAME:
                 target = current_variables[current_argument]
                 if isinstance(target, GlobalReference):
-                    target = self.global_stack_frame.variables[current_argument]
-                elif isinstance(target, NonlocalReference):
-                    target = target.ref_closure.variables[current_argument]
+                    target = self.global_stack_frame.closure.variables[current_argument]
+                if isinstance(target, NullData):
+                    closure = current_closure.base_closure
+                    while closure is not None:
+                        target = closure.variables[current_argument]
+                        if not isinstance(target, NullData):
+                            break
+                        closure = closure.base_closure
                 current_operate_stack.append(target)
             elif current_opcode == OPCodes.STORE:
                 if isinstance(current_variables[current_argument], GlobalReference):
-                    temp = self.global_stack_frame.variables
-                elif isinstance(current_variables[current_argument], NonlocalReference):
-                    temp = current_variables[current_argument].ref_closure.variables
+                    temp = self.global_stack_frame.closure.variables
                 else:
                     temp = current_variables
+                    closure = current_closure.base_closure
+                    while closure is not None:
+                        if not isinstance(closure.variables[current_argument], NullData):
+                            temp = closure.variables
+                            break
+                        closure = closure.base_closure
                 if isinstance(current_operate_stack[-1], NullData):
                     temp.pop(current_argument, None)
                 else:
@@ -143,15 +139,6 @@ class LVM:
                 current_operate_stack.pop()
             elif current_opcode == OPCodes.GLOBAL:
                 current_variables[current_argument] = GlobalReference()
-            elif current_opcode == OPCodes.NONLOCAL:
-                closure = current_closure.base_closure
-                while closure is not None:
-                    if not isinstance(closure.variables[current_argument], NullData):
-                        break
-                    closure = closure.base_closure
-                if closure is None:
-                    raise LVMError(ErrorCode.NONLOCAL_ERROR)
-                current_variables[current_argument] = NonlocalReference(closure)
             elif current_opcode == OPCodes.BUILD_TABLE:
                 temp = []
                 for i in range(current_argument):

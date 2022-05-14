@@ -24,6 +24,7 @@ literal_const = [
 atom_operator_list = literal_const + [
     OperatorInfo(TokenType.ID, 11, True),  # ID
     OperatorInfo(TokenType.FUNC, 11, True),  # func 函数声明语法
+    OperatorInfo(TokenType.VBAR, 11, True),
     OperatorInfo(TokenType.LBRACE, 11, True),  # { table 构造语法
 ]
 
@@ -221,20 +222,8 @@ class GlobalStatement(Statement):
         return f'global {", ".join(map(lambda x: repr(x), self.arguments))};'
 
 
-class NonlocalStatement(Statement):
-    def __init__(self, arguments: List[Identifier] = None,
-                 start: Location = None, end: Location = None):
-        super().__init__(start=start, end=end)
-        if arguments is None:
-            arguments = list()
-        self.arguments: List[Identifier] = arguments
-
-    def __repr__(self):
-        return f'nonlocal {", ".join(map(lambda x: repr(x), self.arguments))};'
-
-
 class FunctionExpression(Expression):
-    def __init__(self, params: List[Identifier] = None, body: BlockStatement = None,
+    def __init__(self, params: List[Identifier] = None, body: BlockStatement = None, is_closure: bool = False,
                  start: Location = None, end: Location = None):
         super().__init__(start=start, end=end)
         if params is None:
@@ -242,6 +231,7 @@ class FunctionExpression(Expression):
 
         self.params: List[Identifier] = params
         self.body: BlockStatement = body
+        self.is_closure: bool = is_closure
 
     def __repr__(self):
         return f'func({", ".join(map(lambda x: repr(x), self.params))}){self.body!r}'
@@ -454,10 +444,17 @@ class Parser:
             ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.GLOBAL:
             # global
-            ast_node = self.parse_global_nonlocal_statement(GlobalStatement())
-        elif self.current_token.type == TokenType.NONLOCAL:
-            # nonlocal
-            ast_node = self.parse_global_nonlocal_statement(NonlocalStatement())
+            ast_node = GlobalStatement()
+            ast_node.start = self.current_token.start
+            while self.current_token.type != TokenType.SEMI:
+                self.advance_token()
+                ast_node.arguments.append(self.parse_expression_identifier())
+                self.advance_token()
+                if self.current_token.type != TokenType.SEMI and self.current_token.type != TokenType.COMMA:
+                    raise self.error(expect_token_type=TokenType.COMMA)
+            self.advance_token()
+            ast_node.end = self.previous_token.end
+            return ast_node
         # func 不需要单独解析，通过 parse_expression 解析
         elif self.current_token.type == TokenType.LBRACE:
             # block
@@ -466,18 +463,6 @@ class Parser:
             ast_node = self.parse_expression()
             self.token_match(TokenType.SEMI)
             self.advance_token()
-        return ast_node
-
-    def parse_global_nonlocal_statement(self, ast_node: Union[GlobalStatement, NonlocalStatement]):
-        ast_node.start = self.current_token.start
-        while self.current_token.type != TokenType.SEMI:
-            self.advance_token()
-            ast_node.arguments.append(self.parse_expression_identifier())
-            self.advance_token()
-            if self.current_token.type != TokenType.SEMI and self.current_token.type != TokenType.COMMA:
-                raise self.error(expect_token_type=TokenType.COMMA)
-        self.advance_token()
-        ast_node.end = self.previous_token.end
         return ast_node
 
     def parse_statement_block(self):
@@ -579,7 +564,7 @@ class Parser:
             ast_node = self.parse_expression()
             self.token_match(TokenType.RPAREN)
             self.advance_token()
-        elif self.current_token.type == TokenType.FUNC:
+        elif self.current_token.type == TokenType.FUNC or self.current_token.type == TokenType.VBAR:
             # 函数声明语法
             ast_node = self.parse_expression_func()
         elif self.current_token.type == TokenType.LBRACE:
@@ -606,12 +591,20 @@ class Parser:
     def parse_expression_func(self):
         ast_node = FunctionExpression()
         ast_node.start = self.current_token.start
-        self.advance_token_match(TokenType.LPAREN)
+        if self.current_token.type == TokenType.FUNC:
+            # func(...){}
+            self.advance_token_match(TokenType.LPAREN)
+            end_token = TokenType.RPAREN
+            ast_node.is_closure = False
+        else:
+            # |...|{}
+            end_token = TokenType.VBAR
+            ast_node.is_closure = True
         self.advance_token()
-        while self.current_token.type != TokenType.RPAREN:
+        while self.current_token.type != end_token:
             ast_node.params.append(self.parse_expression_identifier())
             self.advance_token()
-            if self.current_token.type == TokenType.RPAREN:
+            if self.current_token.type == end_token:
                 break
             self.token_match(TokenType.COMMA)
             self.advance_token()

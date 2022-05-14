@@ -37,7 +37,6 @@ class TokenType(Enum):
     GOTO = 'goto'
     RETURN = 'return'
     GLOBAL = 'global'
-    NONLOCAL = 'nonlocal'
 
     IS = 'is'
     AND = 'and'
@@ -63,6 +62,7 @@ class TokenType(Enum):
     SEMI = ';'
     COLON = ':'
     POINT = '.'
+    VBAR = '|'
 
     ASSIGN = '='
 

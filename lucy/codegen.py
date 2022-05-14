@@ -12,12 +12,12 @@ class Address:
 
 
 class Function(Address):
-    def __init__(self, params_num: int, address: Optional[int] = None, base_function: Optional['Function'] = None):
+    def __init__(self, params_num: int):
         self.params_num: int = params_num
-        self.address: Optional[int] = address
+        self.address: Optional[int] = None
         self.code_list: List[Union[Code, Address]] = list()
-        self.base_function: Optional[Function] = base_function
-        self.should_closure: bool = False
+        self.is_closure: bool = False
+        self.base_function: Optional[Function] = None
 
     def __repr__(self):
         return f'function({self.address!r})'
@@ -48,7 +48,6 @@ class OPCodes(Enum):
     STORE = OPCode('STORE', 1, ArgumentType.VARIABLE)  # name = TOS
     POP = OPCode('POP', 0, ArgumentType.NONE)  # pop()
     GLOBAL = OPCode('GLOBAL', 1, ArgumentType.VARIABLE)  # name = &global(name)
-    NONLOCAL = OPCode('NONLOCAL', 1, ArgumentType.VARIABLE)  # name = &nonlocal(name)
 
     # 弹出 2 * count 项使得字典包含 count 个条目: {..., TOS3: TOS2, TOS1: TOS}
     BUILD_TABLE = OPCode('BUILD_TABLE', 1, ArgumentType.NUMBER)
@@ -278,13 +277,12 @@ class CodeGenerator:
             # global
             for argument in ast_node.arguments:
                 code_list.append(Code(OPCodes.GLOBAL, argument.name))
-        elif isinstance(ast_node, NonlocalStatement):
-            # nonlocal
-            for argument in ast_node.arguments:
-                code_list.append(Code(OPCodes.NONLOCAL, argument.name))
         elif isinstance(ast_node, FunctionExpression):
             # func
-            func = Function(params_num=len(ast_node.params), base_function=self.func_stack[-1])
+            func = Function(params_num=len(ast_node.params))
+            if ast_node.is_closure:
+                func.is_closure = True
+                func.base_function = self.func_stack[-1]
             self.func_stack.append(func)
             code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(func)))
             func.code_list.append(func)
@@ -297,14 +295,6 @@ class CodeGenerator:
                     Code(OPCodes.LOAD_CONST, self.add_literal_list(None)),
                     Code(OPCodes.RETURN)
                 ]
-            if not func.should_closure:
-                func.should_closure = any(map(lambda x: isinstance(x, Code) and x.opcode == OPCodes.NONLOCAL,
-                                              func.code_list))
-                if func.should_closure:
-                    temp = func.base_function
-                    while temp is not None:
-                        temp.should_closure = True
-                        temp = temp.base_function
             self.func_list.append(func)
             self.func_stack.pop()
         elif isinstance(ast_node, TableExpression):

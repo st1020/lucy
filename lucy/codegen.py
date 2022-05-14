@@ -50,7 +50,8 @@ class OPCodes(Enum):
     GLOBAL = OPCode('GLOBAL', 1, ArgumentType.VARIABLE)  # name = &global(name)
     NONLOCAL = OPCode('NONLOCAL', 1, ArgumentType.VARIABLE)  # name = &nonlocal(name)
 
-    NEW_TABLE = OPCode('NEW_TABLE', 0, ArgumentType.NONE)  # push({})
+    # 弹出 2 * count 项使得字典包含 count 个条目: {..., TOS3: TOS2, TOS1: TOS}
+    BUILD_TABLE = OPCode('BUILD_TABLE', 1, ArgumentType.NUMBER)
     GET_TABLE = OPCode('GET_TABLE', 0, ArgumentType.NONE)  # TOS = TOS1[TOS]
     GET_TABLE_TOP = OPCode('GET_TABLE_TOP', 0, ArgumentType.NONE)  # push(TOS1[TOS])
     SET_TABLE_TOP = OPCode('SET_TABLE_TOP', 0, ArgumentType.NONE)  # TOS2[TOS1] = TOS
@@ -76,7 +77,7 @@ class OPCodes(Enum):
     JUMP_IF_TRUE_OR_POP = OPCode('JUMP_IF_TRUE_OR_POP', 1, ArgumentType.NUMBER)
     JUMP_IF_FALSE_OR_POP = OPCode('JUMP_IF_FALSE_OR_POP', 1, ArgumentType.NUMBER)
 
-    # call 和 goto 第一步都是创建新的栈帧，并且依次从当前栈中 pop number 个参数 push 进新的栈
+    # call 和 goto 第一步都是创建新的栈帧，并且依次从当前栈中弹出 count 个参数 push 进新的栈
     CALL = OPCode('CALL', 1, ArgumentType.NUMBER)  # call 调用新的函数，设置新的栈帧返回地址为自身下一条语句，进入新的栈帧 jmp pop
     GOTO = OPCode('GOTO', 1, ArgumentType.NUMBER)  # goto 调用新的函数，设置新的栈帧返回地址为当前的返回地址，进入新的栈帧 jmp pop，并销毁当前栈帧
     RETURN = OPCode('RETURN', 0, ArgumentType.NONE)  # return 返回并销毁当前栈帧，返回值为 pop
@@ -308,11 +309,10 @@ class CodeGenerator:
             self.func_stack.pop()
         elif isinstance(ast_node, TableExpression):
             # table {}
-            code_list.append(Code(OPCodes.NEW_TABLE))
             for property_node in ast_node.properties:
                 code_list += self.gen_code(property_node.key)
                 code_list += self.gen_code(property_node.value)
-                code_list.append(Code(OPCodes.SET_TABLE_TOP))
+            code_list.append(Code(OPCodes.BUILD_TABLE, len(ast_node.properties)))
         elif isinstance(ast_node, UnaryExpression):
             # 一元运算
             code_list += self.gen_code(ast_node.argument)

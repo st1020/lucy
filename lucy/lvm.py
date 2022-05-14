@@ -152,8 +152,18 @@ class LVM:
                 if closure is None:
                     raise LVMError(ErrorCode.NONLOCAL_ERROR)
                 current_variables[current_argument] = NonlocalReference(closure)
-            elif current_opcode == OPCodes.NEW_TABLE:
-                current_operate_stack.append(TableData())
+            elif current_opcode == OPCodes.BUILD_TABLE:
+                temp = []
+                for i in range(current_argument):
+                    temp.append(current_operate_stack.pop())
+                    temp.append(current_operate_stack.pop())
+                table = TableData()
+                for i in range(current_argument):
+                    arg1 = temp.pop()
+                    arg2 = temp.pop()
+                    self.check_type(arg1, HASHABLE_DATA_TYPE)
+                    table[arg1] = arg2
+                current_operate_stack.append(table)
             elif current_opcode == OPCodes.GET_TABLE:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()

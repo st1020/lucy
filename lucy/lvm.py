@@ -96,13 +96,6 @@ class LVM:
             raise LVMError(ErrorCode.TYPE_ERROR,
                            f'unsupported operand type(s) for {operator}: {type(arg1)} and {type(arg2)}')
 
-        def bool_only_operator(operator: str):
-            if isinstance(arg1, BooleanData):
-                if not isinstance(arg2, BooleanData):
-                    unsupported_operand_type(operator)
-            else:
-                unsupported_operand_type(operator)
-
         def number_only_operator(operator: str):
             if isinstance(arg1, IntegerData):
                 if not isinstance(arg2, IntegerData):
@@ -242,16 +235,6 @@ class LVM:
                 arg1 = current_operate_stack.pop()
                 number_only_operator('%')
                 current_operate_stack.append(arg1 % arg2)
-            elif current_opcode == OPCodes.AND:
-                arg2 = current_operate_stack.pop()
-                arg1 = current_operate_stack.pop()
-                bool_only_operator('&&')
-                current_operate_stack.append(arg1 and arg2)
-            elif current_opcode == OPCodes.OR:
-                arg2 = current_operate_stack.pop()
-                arg1 = current_operate_stack.pop()
-                bool_only_operator('||')
-                current_operate_stack.append(arg1 or arg2)
             elif current_opcode == OPCodes.COMPARE_OP:
                 arg2 = current_operate_stack.pop()
                 arg1 = current_operate_stack.pop()
@@ -277,17 +260,37 @@ class LVM:
                 self.pc = current_argument
                 continue
             elif current_opcode == OPCodes.JUMP_IF_TRUE:
-                if current_operate_stack.pop() is True:
+                arg = current_operate_stack.pop()
+                self.check_type(arg, (BooleanData,))
+                if arg is True:
                     self.pc = current_argument
                     continue
             elif current_opcode == OPCodes.JUMP_IF_FALSE:
-                if current_operate_stack.pop() is False:
+                arg = current_operate_stack.pop()
+                self.check_type(arg, (BooleanData,))
+                if arg is False:
                     self.pc = current_argument
                     continue
             elif current_opcode == OPCodes.JUMP_IF_NULL:
                 if current_operate_stack[-1] is None:
                     self.pc = current_argument
                     continue
+            elif current_opcode == OPCodes.JUMP_IF_TRUE_OR_POP:
+                arg = current_operate_stack[-1]
+                self.check_type(arg, (BooleanData,))
+                if arg is True:
+                    self.pc = current_argument
+                    continue
+                else:
+                    current_operate_stack.pop()
+            elif current_opcode == OPCodes.JUMP_IF_FALSE_OR_POP:
+                arg = current_operate_stack[-1]
+                self.check_type(arg, (BooleanData,))
+                if arg is False:
+                    self.pc = current_argument
+                    continue
+                else:
+                    current_operate_stack.pop()
             elif current_opcode == OPCodes.CALL:
                 arguments_list = [current_operate_stack.pop() for _ in range(current_argument)]
                 closure = current_operate_stack.pop()

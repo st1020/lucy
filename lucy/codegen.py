@@ -67,15 +67,14 @@ class OPCodes(Enum):
     MOD = OPCode('MOD', 0, ArgumentType.NONE)  # TOS = TOS1 % TOS
 
     COMPARE_OP = OPCode('COMPARE_OP', 1, ArgumentType.NUMBER)  # TOS = TOS1 (cmp_op[opname]) TOS
-
     IS = OPCode('IS', 0, ArgumentType.NONE)  # TOS = TOS1 is TOS
-    AND = OPCode('AND', 0, ArgumentType.NONE)  # TOS = TOS1 and TOS
-    OR = OPCode('OR', 0, ArgumentType.NONE)  # TOS = TOS1 or TOS
 
     JUMP = OPCode('JUMP', 1, ArgumentType.NUMBER)  # PC = target
-    JUMP_IF_TRUE = OPCode('JUMP_IF_TRUE', 1, ArgumentType.NUMBER)  # if (TOS == true) PC = target
-    JUMP_IF_FALSE = OPCode('JUMP_IF_FALSE', 1, ArgumentType.NUMBER)  # if (TOS == false) PC = target
-    JUMP_IF_NULL = OPCode('JUMP_IF_NULL', 1, ArgumentType.NUMBER)  # if (TOS == null) PC = target
+    JUMP_IF_TRUE = OPCode('JUMP_IF_TRUE', 1, ArgumentType.NUMBER)  # if (TOS == true) PC = target, pop(TOS)
+    JUMP_IF_FALSE = OPCode('JUMP_IF_FALSE', 1, ArgumentType.NUMBER)  # if (TOS == false) PC = target, pop(TOS)
+    JUMP_IF_NULL = OPCode('JUMP_IF_NULL', 1, ArgumentType.NUMBER)  # if (TOS == null) PC = target, pop(TOS)
+    JUMP_IF_TRUE_OR_POP = OPCode('JUMP_IF_TRUE_OR_POP', 1, ArgumentType.NUMBER)
+    JUMP_IF_FALSE_OR_POP = OPCode('JUMP_IF_FALSE_OR_POP', 1, ArgumentType.NUMBER)
 
     # call 和 goto 第一步都是创建新的栈帧，并且依次从当前栈中 pop number 个参数 push 进新的栈
     CALL = OPCode('CALL', 1, ArgumentType.NUMBER)  # call 调用新的函数，设置新的栈帧返回地址为自身下一条语句，进入新的栈帧 jmp pop
@@ -96,8 +95,6 @@ binary_operator_to_opcodes = {
     '%': OPCodes.MOD,
     '-': OPCodes.SUB,
     'is': OPCodes.IS,
-    'and': OPCodes.AND,
-    'or': OPCodes.OR,
 }
 
 
@@ -327,12 +324,22 @@ class CodeGenerator:
                 code_list.append(Code(OPCodes.NOT))
         elif isinstance(ast_node, BinaryExpression):
             # 二元运算
-            code_list += self.gen_code(ast_node.left)
-            code_list += self.gen_code(ast_node.right)
-            if ast_node.operator in cmp_op:
-                code_list.append(Code(OPCodes.COMPARE_OP, cmp_op.index(ast_node.operator)))
+            if ast_node.operator == 'and' or ast_node.operator == 'or':
+                label = Address()
+                code_list += self.gen_code(ast_node.left)
+                if ast_node.operator == 'and':
+                    code_list.append(Code(OPCodes.JUMP_IF_FALSE_OR_POP, label))
+                elif ast_node.operator == 'or':
+                    code_list.append(Code(OPCodes.JUMP_IF_TRUE_OR_POP, label))
+                code_list += self.gen_code(ast_node.right)
+                code_list.append(label)
             else:
-                code_list.append(Code(binary_operator_to_opcodes[ast_node.operator]))
+                code_list += self.gen_code(ast_node.left)
+                code_list += self.gen_code(ast_node.right)
+                if ast_node.operator in cmp_op:
+                    code_list.append(Code(OPCodes.COMPARE_OP, cmp_op.index(ast_node.operator)))
+                else:
+                    code_list.append(Code(binary_operator_to_opcodes[ast_node.operator]))
         elif isinstance(ast_node, AssignmentExpression):
             # 赋值
             if isinstance(ast_node.left, Identifier):

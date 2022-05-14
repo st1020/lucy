@@ -67,8 +67,8 @@ binary_operator_list = assignment_operator_list + [
 
     OperatorInfo(TokenType.IS, 4, True),  # is
 
-    OperatorInfo(TokenType.AND, 3, True),  # &&
-    OperatorInfo(TokenType.OR, 2, True),  # ||
+    OperatorInfo(TokenType.AND, 3, True),  # and
+    OperatorInfo(TokenType.OR, 2, True),  # or
 ]
 
 

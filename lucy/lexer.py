@@ -40,7 +40,8 @@ class TokenType(Enum):
     NONLOCAL = 'nonlocal'
 
     IS = 'is'
-
+    AND = 'and'
+    OR = 'or'
     FUNC = 'func'
 
     NULL = 'null'
@@ -87,9 +88,6 @@ class TokenType(Enum):
     DIV_ASSIGN = '/='
     MOD_ASSIGN = '%='
 
-    AND = '&&'
-    OR = '||'
-
     # other
     INTEGER = 'INTEGER'
     FLOAT = 'FLOAT'
@@ -127,7 +125,7 @@ class TokenType(Enum):
 
     @classmethod
     def double_character_symbols(cls):
-        return cls._build_reserved_dict(TokenType.EQUAL, TokenType.OR)
+        return cls._build_reserved_dict(TokenType.EQUAL, TokenType.MOD_ASSIGN)
 
 
 class Token:

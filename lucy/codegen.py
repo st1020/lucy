@@ -65,8 +65,6 @@ class OPCodes(Enum):
     MUL = OPCode('mul', 0, ArgumentType.NONE)  # push(pop * pop)
     DIV = OPCode('div', 0, ArgumentType.NONE)  # push(pop / pop)
     MOD = OPCode('mod', 0, ArgumentType.NONE)  # push(pop % pop)
-    AND = OPCode('and', 0, ArgumentType.NONE)  # push(pop && pop)
-    OR = OPCode('or', 0, ArgumentType.NONE)  # push(pop || pop)
     EQ = OPCode('eq', 0, ArgumentType.NONE)  # push(pop == pop)
     NE = OPCode('ne', 0, ArgumentType.NONE)  # push(pop != pop)
     LT = OPCode('lt', 0, ArgumentType.NONE)  # push(pop <  pop)
@@ -74,6 +72,8 @@ class OPCodes(Enum):
     GT = OPCode('gt', 0, ArgumentType.NONE)  # push(pop >  pop)
     GE = OPCode('ge', 0, ArgumentType.NONE)  # push(pop >= pop)
     IS = OPCode('is', 0, ArgumentType.NONE)  # push(pop is pop)
+    AND = OPCode('and', 0, ArgumentType.NONE)  # push(pop and pop)
+    OR = OPCode('or', 0, ArgumentType.NONE)  # push(pop or pop)
 
     JMP = OPCode('jmp', 1, ArgumentType.NUMBER)  # PC := $A
     JT = OPCode('jt', 1, ArgumentType.NUMBER)  # if (pop == true) PC := $A
@@ -103,8 +103,8 @@ binary_operator_to_opcodes = {
     '==': OPCodes.EQ,
     '!=': OPCodes.NE,
     'is': OPCodes.IS,
-    '&&': OPCodes.AND,
-    '||': OPCodes.OR,
+    'and': OPCodes.AND,
+    'or': OPCodes.OR,
 }
 
 

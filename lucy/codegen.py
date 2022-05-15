@@ -23,7 +23,7 @@ class Function(Address):
         return f'function({self.address!r})'
 
 
-T_LITERAL = Union[None, bool, int, float, str, Function]
+T_Data = Union[None, bool, int, float, str, Function]
 
 
 class ArgumentType(Enum):
@@ -109,9 +109,9 @@ class Code:
 
 
 class CodeProgram:
-    def __init__(self, code_list: List[Code], literal_list: List[T_LITERAL]):
+    def __init__(self, code_list: List[Code], literal_list: List[T_Data]):
         self.code_list: List[Code] = code_list
-        self.literal_list: List[T_LITERAL] = literal_list
+        self.const_list: List[T_Data] = literal_list
 
 
 class CodeGenerator:
@@ -123,7 +123,7 @@ class CodeGenerator:
 
         self.continue_label_list: List[Address] = list()
         self.break_label_list: List[Address] = list()
-        self.literal_list: List[T_LITERAL] = [None, True, False]
+        self.literal_list: List[T_Data] = [None, True, False]
 
     def generate(self):
         self.code_list += self.gen_code(self.ast)
@@ -144,7 +144,7 @@ class CodeGenerator:
                 code.argument = code.argument.address
         return CodeProgram(self.code_list, self.literal_list)
 
-    def add_literal_list(self, value: T_LITERAL):
+    def add_const_list(self, value: T_Data):
         for index, literal_item in enumerate(self.literal_list):
             if type(value) == type(literal_item) and value == literal_item:
                 # 在 Python 中 bool 是 int 的子类，故需要判断类型严格相等
@@ -163,7 +163,7 @@ class CodeGenerator:
         code_list = list()
         if isinstance(ast_node, Literal):
             # Literal
-            code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(ast_node.value)))
+            code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(ast_node.value)))
         elif isinstance(ast_node, Identifier):
             # Identifier
             code_list.append(Code(OPCodes.LOAD_NAME, ast_node.name))
@@ -260,7 +260,7 @@ class CodeGenerator:
         elif isinstance(ast_node, ReturnStatement):
             # return
             if ast_node.argument is None:
-                code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(None)))
+                code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(None)))
             else:
                 code_list += self.gen_code(ast_node.argument)
             code_list.append(Code(OPCodes.RETURN))
@@ -275,14 +275,14 @@ class CodeGenerator:
                 func.is_closure = True
                 func.base_function = self.func_stack[-1]
             self.func_stack.append(func)
-            code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(func)))
+            code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(func)))
             func.code_list.append(func)
             for param in reversed(ast_node.params):
                 func.code_list.append(Code(OPCodes.STORE_POP, param.name))
             func.code_list += self.gen_code_statement(ast_node.body)
             if not isinstance(func.code_list[-1], Code) or func.code_list[-1].opcode != OPCodes.RETURN.value:
                 func.code_list += [
-                    Code(OPCodes.LOAD_CONST, self.add_literal_list(None)),
+                    Code(OPCodes.LOAD_CONST, self.add_const_list(None)),
                     Code(OPCodes.RETURN),
                 ]
             self.func_list.append(func)
@@ -347,7 +347,7 @@ class CodeGenerator:
                 code_list += self.gen_code(ast_node.property)
             else:
                 assert isinstance(ast_node.property, Identifier)
-                code_list.append(Code(OPCodes.LOAD_CONST, self.add_literal_list(ast_node.property.name)))
+                code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(ast_node.property.name)))
             code_list.append(Code(OPCodes.GET_TABLE))
         elif isinstance(ast_node, CallExpression):
             # 函数调用

@@ -232,6 +232,8 @@ class FunctionExpression(Expression):
         self.is_closure: bool = is_closure
 
     def __repr__(self):
+        if self.is_closure:
+            return f'|{", ".join(map(lambda x: repr(x), self.params))}|{self.body!r}'
         return f'func({", ".join(map(lambda x: repr(x), self.params))}){self.body!r}'
 
 
@@ -268,7 +270,7 @@ class BinaryExpression(Expression):
         self.right: Expression = right
 
     def __repr__(self):
-        return f'({self.left!r}{self.operator}{self.right!r})'
+        return f'({self.left!r} {self.operator} {self.right!r})'
 
 
 class AssignmentExpression(Expression):
@@ -281,7 +283,7 @@ class AssignmentExpression(Expression):
         self.right: Expression = right
 
     def __repr__(self):
-        return f'({self.left!r}{self.operator}{self.right!r})'
+        return f'({self.left!r} {self.operator} {self.right!r})'
 
 
 class MemberExpression(Expression):

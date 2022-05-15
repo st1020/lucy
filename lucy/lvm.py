@@ -69,7 +69,7 @@ class LVM:
     def __init__(self, code_program: CodeProgram):
         self.code_program: CodeProgram = code_program
         self.code_list = self.code_program.code_list
-        self.literal_list = self.code_program.literal_list
+        self.literal_list = self.code_program.const_list
         self.pc: int = 0
         self.global_stack_frame: StackFrame = StackFrame(ClosureData(None))
         self.call_stack: List[StackFrame] = [self.global_stack_frame]

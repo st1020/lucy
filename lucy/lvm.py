@@ -1,15 +1,24 @@
-from typing import List, Dict, Union, Optional, Tuple
+from typing import List, Dict, Union, Optional, Tuple, Callable
 
 from .exceptions import LVMError, ErrorCode
 from .codegen import CodeProgram, OPCodes, Function, cmp_op
+
+
+class ExtendFunction(Function):
+    def __init__(self, params_num: int, func: Callable):
+        super().__init__(params_num)
+        self.is_closure = Function
+        self.func = func
+
+    def __repr__(self):
+        return f'ExtendFunction({self.func!r})'
+
 
 NullData = type(None)
 BooleanData = bool
 IntegerData = int
 FloatData = float
 StringData = str
-
-HASHABLE_DATA_TYPE = (NullData, BooleanData, IntegerData, FloatData, StringData)
 
 
 class TableData(Dict['T_Data', 'T_Data']):
@@ -45,8 +54,13 @@ class ClosureData:
             self._variables = VariablesDict()
         return self._variables
 
+    def __repr__(self):
+        return repr(self.function)
+
 
 T_Data = Union[NullData, BooleanData, IntegerData, FloatData, StringData, TableData, ClosureData]
+HASHABLE_DATA_TYPE = (NullData, BooleanData, IntegerData, FloatData, StringData)
+LUCY_DATA_TYPE = HASHABLE_DATA_TYPE + (TableData, ClosureData)
 
 
 class GlobalReference:
@@ -69,6 +83,10 @@ class LVM:
     def __init__(self, code_program: CodeProgram):
         self.code_program: CodeProgram = code_program
         self.pc: int = 0
+        self.builtin_namespace: VariablesDict = VariablesDict({
+            'print': ExtendFunction(params_num=1, func=print),
+            'input': ExtendFunction(params_num=0, func=input),
+        })
         self.global_stack_frame: StackFrame = StackFrame(ClosureData(None))
         self.call_stack: List[StackFrame] = [self.global_stack_frame]
 
@@ -123,6 +141,10 @@ class LVM:
                         if not isinstance(target, NullData):
                             break
                         closure = closure.base_closure
+                if isinstance(target, NullData):
+                    target = self.builtin_namespace[value]
+                if isinstance(target, ExtendFunction):
+                    target = ClosureData(function=target)
                 self.current_operate_stack.append(target)
             elif self.current_code.opcode == OPCodes.STORE:
                 self.code_store()
@@ -319,13 +341,33 @@ class LVM:
         else:
             # 不弹出栈顶的 closure，用于 for
             closure = self.current_operate_stack[-1]
-        if isinstance(closure, ClosureData):
-            closure = ClosureData(function=closure.function, base_closure=closure.base_closure)
+        if not isinstance(closure, ClosureData):
+            raise LVMError(ErrorCode.TYPE_ERROR, f'{type(closure)} is not callable')
+        if len(arguments_list) != closure.function.params_num:
+            raise LVMError(
+                ErrorCode.CALL_ERROR,
+                f'{closure} require {closure.function.params_num} arguments, but {len(arguments_list)} was given'
+            )
+        if isinstance(closure.function, ExtendFunction):
+            try:
+                return_value = closure.function.func(*reversed(arguments_list))
+            except Exception as e:
+                raise LVMError(
+                    ErrorCode.EXTEND_FUNCTION_ERROR,
+                    f'Extend function {closure.function!r} raise exception {e!r}'
+                )
+            if not isinstance(return_value, LUCY_DATA_TYPE):
+                raise LVMError(
+                    ErrorCode.EXTEND_FUNCTION_ERROR,
+                    f'Extend function {closure.function!r} return value is not a lucy data'
+                )
+            self.current_operate_stack.append(return_value)
+            self.pc += 1
         else:
-            raise LVMError(ErrorCode.TYPE_ERROR, f'{type(closure)} is not callable.')
-        self.call_stack.append(StackFrame(
-            closure=closure,
-            operate_stack=arguments_list,
-            return_address=return_address
-        ))
-        self.pc = closure.function.address
+            closure = ClosureData(function=closure.function, base_closure=closure.base_closure)
+            self.call_stack.append(StackFrame(
+                closure=closure,
+                operate_stack=arguments_list,
+                return_address=return_address
+            ))
+            self.pc = closure.function.address

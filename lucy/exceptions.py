@@ -17,7 +17,8 @@ class ErrorCode(Enum):
 
     # LVMError
     TYPE_ERROR = 'Type Error'
-    LVM_ERROR = 'LVM Error'
+    CALL_ERROR = 'Call Error'
+    EXTEND_FUNCTION_ERROR = 'Extend Function Error'
 
 
 class InterpreterError(Exception):

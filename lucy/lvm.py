@@ -68,13 +68,11 @@ class StackFrame:
 class LVM:
     def __init__(self, code_program: CodeProgram):
         self.code_program: CodeProgram = code_program
-        self.code_list = self.code_program.code_list
-        self.literal_list = self.code_program.const_list
         self.pc: int = 0
         self.global_stack_frame: StackFrame = StackFrame(ClosureData(None))
         self.call_stack: List[StackFrame] = [self.global_stack_frame]
 
-        self.current_code = self.code_list[self.pc]
+        self.current_code = self.code_program.code_list[self.pc]
         self.current_operate_stack = self.call_stack[-1].operate_stack
         self.current_variables = self.call_stack[-1].closure.variables
         self.current_return_address = self.call_stack[-1].return_address
@@ -101,26 +99,27 @@ class LVM:
             else:
                 unsupported_operand_type(operator)
 
-        while self.pc < len(self.code_list):
-            self.current_code = self.code_list[self.pc]
+        while self.pc < len(self.code_program.code_list):
+            self.current_code = self.code_program.code_list[self.pc]
             self.current_operate_stack = self.call_stack[-1].operate_stack
             self.current_variables = self.call_stack[-1].closure.variables
             self.current_return_address = self.call_stack[-1].return_address
             self.current_closure = self.call_stack[-1].closure
 
             if self.current_code.opcode == OPCodes.LOAD_CONST:
-                value = self.literal_list[self.current_code.argument]
+                value = self.code_program.const_list[self.current_code.argument]
                 if isinstance(value, Function):
                     value = ClosureData(function=value, base_closure=self.current_closure if value.is_closure else None)
                 self.current_operate_stack.append(value)
             elif self.current_code.opcode == OPCodes.LOAD_NAME:
-                target = self.current_variables[self.current_code.argument]
+                value = self.code_program.name_list[self.current_code.argument]
+                target = self.current_variables[value]
                 if isinstance(target, GlobalReference):
-                    target = self.global_stack_frame.closure.variables[self.current_code.argument]
+                    target = self.global_stack_frame.closure.variables[value]
                 if isinstance(target, NullData):
                     closure = self.current_closure.base_closure
                     while closure is not None:
-                        target = closure.variables[self.current_code.argument]
+                        target = closure.variables[value]
                         if not isinstance(target, NullData):
                             break
                         closure = closure.base_closure
@@ -133,7 +132,8 @@ class LVM:
                 self.code_store()
                 self.current_operate_stack.pop()
             elif self.current_code.opcode == OPCodes.GLOBAL:
-                self.current_variables[self.current_code.argument] = GlobalReference()
+                value = self.code_program.name_list[self.current_code.argument]
+                self.current_variables[value] = GlobalReference()
             elif self.current_code.opcode == OPCodes.BUILD_TABLE:
                 temp = []
                 for i in range(self.current_code.argument):
@@ -291,20 +291,21 @@ class LVM:
             self.pc += 1
 
     def code_store(self):
-        if isinstance(self.current_variables[self.current_code.argument], GlobalReference):
+        value = self.code_program.name_list[self.current_code.argument]
+        if isinstance(self.current_variables[value], GlobalReference):
             temp = self.global_stack_frame.closure.variables
         else:
             temp = self.current_variables
             closure = self.current_closure.base_closure
             while closure is not None:
-                if not isinstance(closure.variables[self.current_code.argument], NullData):
+                if not isinstance(closure.variables[value], NullData):
                     temp = closure.variables
                     break
                 closure = closure.base_closure
         if isinstance(self.current_operate_stack[-1], NullData):
-            temp.pop(self.current_code.argument, None)
+            temp.pop(value, None)
         else:
-            temp[self.current_code.argument] = self.current_operate_stack[-1]
+            temp[value] = self.current_operate_stack[-1]
 
     def code_call(self, arg_num: int = None, return_address: int = None, pop: bool = True):
         if arg_num is None:

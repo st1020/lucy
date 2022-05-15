@@ -80,7 +80,6 @@ class OPCodes(Enum):
     CALL = OPCode('CALL', 1, ArgumentType.NUMBER)  # call 调用新的函数，设置新的栈帧返回地址为自身下一条语句，进入新的栈帧 jmp pop
     GOTO = OPCode('GOTO', 1, ArgumentType.NUMBER)  # goto 调用新的函数，设置新的栈帧返回地址为当前的返回地址，进入新的栈帧 jmp pop，并销毁当前栈帧
     RETURN = OPCode('RETURN', 0, ArgumentType.NONE)  # return 返回并销毁当前栈帧，返回值为 pop
-    EXIT = OPCode('EXIT', 0, ArgumentType.NONE)  # exit 退出
 
     def __repr__(self):
         return repr(self.value)
@@ -142,7 +141,8 @@ class CodeGenerator:
 
     def generate(self):
         self.code_list += self.gen_code(self.ast)
-        self.code_list.append(Code(OPCodes.EXIT))
+        self.code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(None)))
+        self.code_list.append(Code(OPCodes.RETURN))
         # 合并 code_list 和 func_list
         for func_code in self.func_list:
             self.code_list += func_code.code_list

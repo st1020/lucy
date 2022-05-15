@@ -284,10 +284,10 @@ class LVM:
                 return_value = self.current_operate_stack.pop()
                 self.pc = self.current_return_address
                 self.call_stack.pop()
+                if len(self.call_stack) == 0:
+                    break
                 self.call_stack[-1].operate_stack.append(return_value)
                 continue
-            elif self.current_code.opcode == OPCodes.EXIT:
-                break
             self.pc += 1
 
     def code_store(self):

@@ -46,6 +46,8 @@ class OPCode:
 
 class OPCodes(Enum):
     POP = OPCode('POP', 0, ArgumentType.NONE)  # pop()
+    DUP = OPCode('DUP', 0, ArgumentType.NONE)  # 复制栈顶
+    ROT_TWO = OPCode('ROT_TWO', 0, ArgumentType.NONE)  # 交换栈顶两个堆栈项
     LOAD_NAME = OPCode('LOAD_NAME', 1, ArgumentType.NAME_INDEX)  # push(name)
     LOAD_CONST = OPCode('LOAD_CONST', 1, ArgumentType.CONST_INDEX)  # push(const)
     STORE = OPCode('STORE', 1, ArgumentType.NAME_INDEX)  # name = TOS
@@ -299,14 +301,12 @@ class CodeGenerator:
             self.func_stack.append(func)
             code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(func)))
             func.code_list.append(func)
-            for param in reversed(ast_node.params):
+            for param in ast_node.params:
                 func.code_list.append(Code(OPCodes.STORE_POP, self.add_name_list(param.name)))
             func.code_list += self.gen_code_statement(ast_node.body)
             if not isinstance(func.code_list[-1], Code) or func.code_list[-1].opcode != OPCodes.RETURN.value:
-                func.code_list += [
-                    Code(OPCodes.LOAD_CONST, self.add_const_list(None)),
-                    Code(OPCodes.RETURN),
-                ]
+                func.code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(None)))
+                func.code_list.append(Code(OPCodes.RETURN))
             self.func_list.append(func)
             self.func_stack.pop()
         elif isinstance(ast_node, TableExpression):
@@ -365,7 +365,7 @@ class CodeGenerator:
         elif isinstance(ast_node, MemberExpression):
             # 取成员
             code_list += self.gen_code(ast_node.table)
-            if ast_node.computed:
+            if ast_node.expression_type == '[]':
                 code_list += self.gen_code(ast_node.property)
             else:
                 assert isinstance(ast_node.property, Identifier)
@@ -373,8 +373,19 @@ class CodeGenerator:
             code_list.append(Code(OPCodes.GET_TABLE))
         elif isinstance(ast_node, CallExpression):
             # 函数调用
-            code_list += self.gen_code(ast_node.callee)
-            for argument in ast_node.arguments:
-                code_list += self.gen_code(argument)
-            code_list.append(Code(OPCodes.CALL, len(ast_node.arguments)))
+            if isinstance(ast_node.callee, MemberExpression) and ast_node.callee.expression_type == '.':
+                code_list += self.gen_code(ast_node.callee.table)
+                code_list.append(Code(OPCodes.DUP))
+                assert isinstance(ast_node.callee.property, Identifier)
+                code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(ast_node.callee.property.name)))
+                code_list.append(Code(OPCodes.GET_TABLE))
+                code_list.append(Code(OPCodes.ROT_TWO))
+                for argument in ast_node.arguments:
+                    code_list += self.gen_code(argument)
+                code_list.append(Code(OPCodes.CALL, len(ast_node.arguments) + 1))
+            else:
+                code_list += self.gen_code(ast_node.callee)
+                for argument in ast_node.arguments:
+                    code_list += self.gen_code(argument)
+                code_list.append(Code(OPCodes.CALL, len(ast_node.arguments)))
         return code_list

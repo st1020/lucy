@@ -82,6 +82,8 @@ class TokenType(Enum):
     LESS_EQUAL = '<='
     GREATER_EQUAL = '>='
 
+    DOUBLE_COLON = '::'
+
     PLUS_ASSIGN = '+='
     MINUS_ASSIGN = '-='
     MUL_ASSIGN = '*='

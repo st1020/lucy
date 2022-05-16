@@ -150,6 +150,13 @@ class LVM:
                 self.code_store()
             elif self.current_code.opcode == OPCodes.POP:
                 self.current_operate_stack.pop()
+            elif self.current_code.opcode == OPCodes.DUP:
+                self.current_operate_stack.append(self.current_operate_stack[-1])
+            elif self.current_code.opcode == OPCodes.ROT_TWO:
+                arg1 = self.current_operate_stack.pop()
+                arg2 = self.current_operate_stack.pop()
+                self.current_operate_stack.append(arg1)
+                self.current_operate_stack.append(arg2)
             elif self.current_code.opcode == OPCodes.STORE_POP:
                 self.code_store()
                 self.current_operate_stack.pop()

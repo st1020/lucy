@@ -33,6 +33,7 @@ primary_operator_list = [
     OperatorInfo(TokenType.LPAREN, 10, True),  # ( 函数调用语法
     OperatorInfo(TokenType.LBRACKET, 10, True),  # [ 成员引用语法
     OperatorInfo(TokenType.POINT, 10, True),  # . 成员引用语法
+    OperatorInfo(TokenType.DOUBLE_COLON, 10, True),  # :: 成员引用语法
 ]
 
 unary_operator_list = [
@@ -287,17 +288,20 @@ class AssignmentExpression(Expression):
 
 
 class MemberExpression(Expression):
-    def __init__(self, table: Expression = None, property: Expression = None, computed: bool = None,  # noqa
+    def __init__(self, table: Expression = None, property: Expression = None, expression_type: str = None,  # noqa
                  start: Location = None, end: Location = None):
         super().__init__(start=start, end=end)
         self.table: Expression = table
         self.property: Expression = property
-        self.computed: bool = computed
+        self.expression_type: str = expression_type
         # computed 为 True 时表示是由 [] 语法产生的，需要对 property 进行计算
         # computed 为 False 时表示是由 . 语法生成的，property 一定是 Identifier，解释为字符串字面量
 
     def __repr__(self):
-        return f'({self.table!r}[{self.property!r}])'
+        if self.expression_type == '[]':
+            return f'({self.table!r}[{self.property!r}])'
+        else:
+            return f'({self.table!r}{self.expression_type}{self.property!r})'
 
 
 class CallExpression(Expression):
@@ -536,16 +540,16 @@ class Parser:
                 self.advance_token()
             elif self.current_token.type == TokenType.LBRACKET:
                 # 成员引用 []
-                ast_node = MemberExpression(table=ast_node, computed=True,
+                ast_node = MemberExpression(table=ast_node, expression_type='[]',
                                             start=start)
                 self.advance_token()
                 ast_node.property = self.parse_expression()
                 self.token_match(TokenType.RBRACKET)
                 ast_node.end = self.current_token.end
                 self.advance_token()
-            elif self.current_token.type == TokenType.POINT:
-                # 成员引用 .
-                ast_node = MemberExpression(table=ast_node, computed=False,
+            elif self.current_token.type == TokenType.POINT or self.current_token.type == TokenType.DOUBLE_COLON:
+                # 成员引用 . 和 ::
+                ast_node = MemberExpression(table=ast_node, expression_type=self.current_token.type.value,
                                             start=start)
                 self.advance_token()
                 ast_node.property = self.parse_expression_identifier()

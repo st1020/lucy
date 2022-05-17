@@ -37,6 +37,20 @@ class TableData(Dict['T_Data', 'T_Data']):
         else:
             super().__setitem__(key, value)
 
+    def get(self, key: 'T_Data') -> 'T_Data':
+        table = self
+        while not isinstance(table, NullData):
+            item = table[key]
+            if not isinstance(item, NullData):
+                return item
+            table = table['__base__']
+            if not isinstance(table, TableData):
+                break
+        return NullData()
+
+    def row_get(self, key: 'T_Data') -> 'T_Data':
+        return self[key]
+
 
 class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference']]):
     pass
@@ -180,7 +194,7 @@ class LVM:
                 arg1 = self.current_operate_stack.pop()
                 self.check_type(arg1, (TableData,))
                 self.check_type(arg2, HASHABLE_DATA_TYPE)
-                self.current_operate_stack.append(arg1[arg2])
+                self.current_operate_stack.append(arg1.get(arg2))
             elif self.current_code.opcode == OPCodes.SET_TABLE:
                 arg3 = self.current_operate_stack.pop()
                 arg2 = self.current_operate_stack.pop()

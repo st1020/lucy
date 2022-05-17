@@ -91,6 +91,7 @@ class StackFrame:
         self.closure: ClosureData = closure
         self.operate_stack: List[T_Data] = operate_stack if operate_stack is not None else list()
         self.return_address: int = return_address
+        self.call_flag: bool = False
 
 
 class LVM:
@@ -109,7 +110,6 @@ class LVM:
         self.current_variables = self.call_stack[-1].closure.variables
         self.current_return_address = self.call_stack[-1].return_address
         self.current_closure = self.call_stack[-1].closure
-        self.call_flag: bool = False
 
     @staticmethod
     def check_type(value: T_Data, data_type: Tuple[type, ...]):
@@ -203,14 +203,14 @@ class LVM:
                 self.check_type(arg2, HASHABLE_DATA_TYPE)
                 arg1[arg2] = arg3
             elif self.current_code.opcode == OPCodes.FOR:
-                if self.call_flag:
-                    self.call_flag = False
+                if self.call_stack[-1].call_flag:
+                    self.call_stack[-1].call_flag = False
                     if isinstance(self.current_operate_stack[-1], NullData):
                         self.current_operate_stack.pop()
                         self.pc = self.current_code.argument
                         continue
                 else:
-                    self.call_flag = True
+                    self.call_stack[-1].call_flag = True
                     self.code_call(arg_num=0, return_address=self.pc, pop=False)
                     continue
             elif self.current_code.opcode == OPCodes.NEG:

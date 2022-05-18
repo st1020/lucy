@@ -76,6 +76,22 @@ T_Data = Union[NullData, BooleanData, IntegerData, FloatData, StringData, TableD
 HASHABLE_DATA_TYPE = (NullData, BooleanData, IntegerData, FloatData, StringData)
 LUCY_DATA_TYPE = HASHABLE_DATA_TYPE + (TableData, ClosureData)
 
+BINARY_OPCODES = {
+    OPCodes.ADD: ('__add__', '+'),
+    OPCodes.SUB: ('__sub__', '-'),
+    OPCodes.MUL: ('__mul__', '*'),
+    OPCodes.DIV: ('__div__', '/'),
+    OPCodes.MOD: ('__mod__', '%'),
+}
+COMPARE_OPERATORS = {
+    '<': '__lt__',
+    '<=': '__le__',
+    '==': '__eq__',
+    '!=': '__ne__',
+    '>': '__gt__',
+    '>=': '__ge__',
+}
+
 
 class GlobalReference:
     obj = None
@@ -214,73 +230,92 @@ class LVM:
                     self.code_call(arg_num=0, return_address=self.pc, pop=False)
                     continue
             elif self.current_code.opcode == OPCodes.NEG:
-                arg1 = self.current_operate_stack.pop()
-                self.check_type(arg1, (IntegerData, FloatData))
-                self.current_operate_stack.append(-arg1)
+                if self.call_stack[-1].call_flag:
+                    self.call_stack[-1].call_flag = False
+                else:
+                    arg1 = self.current_operate_stack.pop()
+                    if isinstance(arg1, TableData) and isinstance(arg1['__neg__'], ClosureData):
+                        self.current_operate_stack.append(arg1['__neg__'])
+                        self.current_operate_stack.append(arg1)
+                        self.call_stack[-1].call_flag = True
+                        self.code_call(arg_num=1, return_address=self.pc)
+                        continue
+                    else:
+                        self.check_type(arg1, (IntegerData, FloatData))
+                        self.current_operate_stack.append(-arg1)
             elif self.current_code.opcode == OPCodes.NOT:
                 arg1 = self.current_operate_stack.pop()
                 self.check_type(arg1, (BooleanData,))
                 self.current_operate_stack.append(not arg1)
-            elif self.current_code.opcode == OPCodes.ADD:
-                arg2 = self.current_operate_stack.pop()
-                arg1 = self.current_operate_stack.pop()
-                if isinstance(arg1, IntegerData):
-                    if not isinstance(arg2, IntegerData):
-                        unsupported_operand_type('+')
-                elif isinstance(arg1, FloatData):
-                    if not isinstance(arg2, FloatData):
-                        unsupported_operand_type('+')
-                elif isinstance(arg1, StringData):
-                    if not isinstance(arg2, StringData):
-                        unsupported_operand_type('+')
+            elif self.current_code.opcode in BINARY_OPCODES.keys():
+                table_key, operator_name = BINARY_OPCODES[self.current_code.opcode]
+
+                if self.call_stack[-1].call_flag:
+                    self.call_stack[-1].call_flag = False
                 else:
-                    unsupported_operand_type('+')
-                self.current_operate_stack.append(arg1 + arg2)
-            elif self.current_code.opcode == OPCodes.SUB:
-                arg2 = self.current_operate_stack.pop()
-                arg1 = self.current_operate_stack.pop()
-                number_only_operator('-')
-                self.current_operate_stack.append(arg1 - arg2)
-            elif self.current_code.opcode == OPCodes.MUL:
-                arg2 = self.current_operate_stack.pop()
-                arg1 = self.current_operate_stack.pop()
-                number_only_operator('*')
-                self.current_operate_stack.append(arg1 * arg2)
-            elif self.current_code.opcode == OPCodes.DIV:
-                arg2 = self.current_operate_stack.pop()
-                arg1 = self.current_operate_stack.pop()
-                if isinstance(arg1, IntegerData):
-                    if not isinstance(arg2, IntegerData):
-                        unsupported_operand_type('/')
-                    self.current_operate_stack.append(arg1 // arg2)
-                elif isinstance(arg1, FloatData):
-                    if not isinstance(arg2, FloatData):
-                        unsupported_operand_type('/')
-                    self.current_operate_stack.append(arg1 / arg2)
-                else:
-                    unsupported_operand_type('/')
-            elif self.current_code.opcode == OPCodes.MOD:
-                arg2 = self.current_operate_stack.pop()
-                arg1 = self.current_operate_stack.pop()
-                number_only_operator('%')
-                self.current_operate_stack.append(arg1 % arg2)
+                    arg2 = self.current_operate_stack.pop()
+                    arg1 = self.current_operate_stack.pop()
+
+                    if isinstance(arg1, TableData) and isinstance(arg1[table_key], ClosureData):
+                        self.current_operate_stack.append(arg1[table_key])
+                        self.current_operate_stack.append(arg1)
+                        self.current_operate_stack.append(arg2)
+                        self.call_stack[-1].call_flag = True
+                        self.code_call(arg_num=2, return_address=self.pc)
+                        continue
+                    elif self.current_code.opcode == OPCodes.ADD and isinstance(arg1, StringData):
+                        if not isinstance(arg2, StringData):
+                            unsupported_operand_type('+')
+                    else:
+                        number_only_operator(operator_name)
+
+                    if self.current_code.opcode == OPCodes.ADD:
+                        self.current_operate_stack.append(arg1 + arg2)
+                    elif self.current_code.opcode == OPCodes.SUB:
+                        self.current_operate_stack.append(arg1 - arg2)
+                    elif self.current_code.opcode == OPCodes.MUL:
+                        self.current_operate_stack.append(arg1 * arg2)
+                    elif self.current_code.opcode == OPCodes.DIV:
+                        if isinstance(arg1, IntegerData):
+                            self.current_operate_stack.append(arg1 // arg2)
+                        elif isinstance(arg1, FloatData):
+                            self.current_operate_stack.append(arg1 / arg2)
+                    elif self.current_code.opcode == OPCodes.MOD:
+                        self.current_operate_stack.append(arg1 % arg2)
+
             elif self.current_code.opcode == OPCodes.COMPARE_OP:
-                arg2 = self.current_operate_stack.pop()
-                arg1 = self.current_operate_stack.pop()
-                if cmp_op[self.current_code.argument] != '==' and cmp_op[self.current_code.argument] != '!=':
-                    number_only_operator(cmp_op[self.current_code.argument])
-                if cmp_op[self.current_code.argument] == '==':
-                    self.current_operate_stack.append(arg1 == arg2)
-                elif cmp_op[self.current_code.argument] == '!=':
-                    self.current_operate_stack.append(arg1 != arg2)
-                elif cmp_op[self.current_code.argument] == '<':
-                    self.current_operate_stack.append(arg1 < arg2)
-                elif cmp_op[self.current_code.argument] == '<=':
-                    self.current_operate_stack.append(arg1 <= arg2)
-                elif cmp_op[self.current_code.argument] == '>':
-                    self.current_operate_stack.append(arg1 > arg2)
-                elif cmp_op[self.current_code.argument] == '>=':
-                    self.current_operate_stack.append(arg1 >= arg2)
+                operator_name = cmp_op[self.current_code.argument]
+                table_key = COMPARE_OPERATORS[operator_name]
+
+                if self.call_stack[-1].call_flag:
+                    self.call_stack[-1].call_flag = False
+                else:
+                    arg2 = self.current_operate_stack.pop()
+                    arg1 = self.current_operate_stack.pop()
+
+                    if isinstance(arg1, TableData) and isinstance(arg1[table_key], ClosureData):
+                        self.current_operate_stack.append(arg1[table_key])
+                        self.current_operate_stack.append(arg1)
+                        self.current_operate_stack.append(arg2)
+                        self.call_stack[-1].call_flag = True
+                        self.code_call(arg_num=2, return_address=self.pc)
+                        continue
+                    elif operator_name != '==' and operator_name != '!=':
+                        number_only_operator(operator_name)
+
+                    if operator_name == '==':
+                        self.current_operate_stack.append(arg1 == arg2)
+                    elif operator_name == '!=':
+                        self.current_operate_stack.append(arg1 != arg2)
+                    elif operator_name == '<':
+                        self.current_operate_stack.append(arg1 < arg2)
+                    elif operator_name == '<=':
+                        self.current_operate_stack.append(arg1 <= arg2)
+                    elif operator_name == '>':
+                        self.current_operate_stack.append(arg1 > arg2)
+                    elif operator_name == '>=':
+                        self.current_operate_stack.append(arg1 >= arg2)
+
             elif self.current_code.opcode == OPCodes.IS:
                 arg2 = self.current_operate_stack.pop()
                 arg1 = self.current_operate_stack.pop()
@@ -362,6 +397,9 @@ class LVM:
         else:
             # 不弹出栈顶的 closure，用于 for
             closure = self.current_operate_stack[-1]
+        if isinstance(closure, TableData) and isinstance(closure['__call__'], ClosureData):
+            arguments_list.append(closure)
+            closure = closure['__call__']
         if not isinstance(closure, ClosureData):
             raise LVMError(ErrorCode.TYPE_ERROR, f'{type(closure)} is not callable')
         if len(arguments_list) != closure.function.params_num:

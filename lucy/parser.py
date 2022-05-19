@@ -12,65 +12,65 @@ class OperatorInfo:
         self.associativity: bool = associativity  # True 为从左到右，False 为从右到左
 
 
+assignment_token_list = [
+    TokenType.ASSIGN,  # =
+    TokenType.PLUS_ASSIGN,  # +=
+    TokenType.MINUS_ASSIGN,  # -=
+    TokenType.MUL_ASSIGN,  # *=
+    TokenType.DIV_ASSIGN,  # /=
+    TokenType.MOD_ASSIGN,  # %=
+]
+
 literal_const = [
-    OperatorInfo(TokenType.NULL, 11, True),  # null 字面量
-    OperatorInfo(TokenType.TRUE, 11, True),  # 布尔字面量
-    OperatorInfo(TokenType.FALSE, 11, True),  # 布尔字面量
-    OperatorInfo(TokenType.INTEGER, 11, True),  # 整数字面量
-    OperatorInfo(TokenType.FLOAT, 11, True),  # 浮点数字面量
-    OperatorInfo(TokenType.STRING, 11, True),  # 字符串字面量
+    OperatorInfo(TokenType.NULL, 10, True),  # null 字面量
+    OperatorInfo(TokenType.TRUE, 10, True),  # 布尔字面量
+    OperatorInfo(TokenType.FALSE, 10, True),  # 布尔字面量
+    OperatorInfo(TokenType.INTEGER, 10, True),  # 整数字面量
+    OperatorInfo(TokenType.FLOAT, 10, True),  # 浮点数字面量
+    OperatorInfo(TokenType.STRING, 10, True),  # 字符串字面量
 ]
 
 atom_operator_list = literal_const + [
-    OperatorInfo(TokenType.ID, 11, True),  # ID
-    OperatorInfo(TokenType.FUNC, 11, True),  # func 函数声明语法
-    OperatorInfo(TokenType.VBAR, 11, True),
-    OperatorInfo(TokenType.LBRACE, 11, True),  # { table 构造语法
+    OperatorInfo(TokenType.ID, 10, True),  # ID
+    OperatorInfo(TokenType.FUNC, 10, True),  # func 函数声明语法
+    OperatorInfo(TokenType.VBAR, 10, True),
+    OperatorInfo(TokenType.LBRACE, 10, True),  # { table 构造语法
 ]
 
 # 此类运算符仅能跟在原子之后
 primary_operator_list = [
-    OperatorInfo(TokenType.LPAREN, 10, True),  # ( 函数调用语法
-    OperatorInfo(TokenType.LBRACKET, 10, True),  # [ 成员引用语法
-    OperatorInfo(TokenType.POINT, 10, True),  # . 成员引用语法
-    OperatorInfo(TokenType.DOUBLE_COLON, 10, True),  # :: 成员引用语法
+    OperatorInfo(TokenType.LPAREN, 9, True),  # ( 函数调用语法
+    OperatorInfo(TokenType.LBRACKET, 9, True),  # [ 成员引用语法
+    OperatorInfo(TokenType.POINT, 9, True),  # . 成员引用语法
+    OperatorInfo(TokenType.DOUBLE_COLON, 9, True),  # :: 成员引用语法
 ]
 
 unary_operator_list = [
-    OperatorInfo(TokenType.ADD, 9, False),  # +
-    OperatorInfo(TokenType.SUB, 9, False),  # -
-    OperatorInfo(TokenType.NOT, 9, False),  # !
+    OperatorInfo(TokenType.ADD, 8, False),  # +
+    OperatorInfo(TokenType.SUB, 8, False),  # -
+    OperatorInfo(TokenType.NOT, 8, False),  # !
 ]
 
-assignment_operator_list = [
-    OperatorInfo(TokenType.ASSIGN, 1, False),  # =
-    OperatorInfo(TokenType.PLUS_ASSIGN, 1, False),  # +=
-    OperatorInfo(TokenType.MINUS_ASSIGN, 1, False),  # -=
-    OperatorInfo(TokenType.MUL_ASSIGN, 1, False),  # *=
-    OperatorInfo(TokenType.DIV_ASSIGN, 1, False),  # /=
-    OperatorInfo(TokenType.MOD_ASSIGN, 1, False),  # %=
-]
+binary_operator_list = [
+    OperatorInfo(TokenType.MUL, 7, True),  # *
+    OperatorInfo(TokenType.DIV, 7, True),  # /
+    OperatorInfo(TokenType.MOD, 7, True),  # %
 
-binary_operator_list = assignment_operator_list + [
-    OperatorInfo(TokenType.MUL, 8, True),  # *
-    OperatorInfo(TokenType.DIV, 8, True),  # /
-    OperatorInfo(TokenType.MOD, 8, True),  # %
+    OperatorInfo(TokenType.ADD, 6, True),  # +
+    OperatorInfo(TokenType.SUB, 6, True),  # -
 
-    OperatorInfo(TokenType.ADD, 7, True),  # +
-    OperatorInfo(TokenType.SUB, 7, True),  # -
+    OperatorInfo(TokenType.LESS, 5, True),  # <
+    OperatorInfo(TokenType.LESS_EQUAL, 5, True),  # <=
+    OperatorInfo(TokenType.GREATER, 5, True),  # >
+    OperatorInfo(TokenType.GREATER_EQUAL, 5, True),  # >=
 
-    OperatorInfo(TokenType.LESS, 6, True),  # <
-    OperatorInfo(TokenType.LESS_EQUAL, 6, True),  # <=
-    OperatorInfo(TokenType.GREATER, 6, True),  # >
-    OperatorInfo(TokenType.GREATER_EQUAL, 6, True),  # >=
+    OperatorInfo(TokenType.EQUAL, 4, True),  # ==
+    OperatorInfo(TokenType.NOT_EQUAL, 4, True),  # !=
 
-    OperatorInfo(TokenType.EQUAL, 5, True),  # ==
-    OperatorInfo(TokenType.NOT_EQUAL, 5, True),  # !=
+    OperatorInfo(TokenType.IS, 3, True),  # is
 
-    OperatorInfo(TokenType.IS, 4, True),  # is
-
-    OperatorInfo(TokenType.AND, 3, True),  # and
-    OperatorInfo(TokenType.OR, 2, True),  # or
+    OperatorInfo(TokenType.AND, 2, True),  # and
+    OperatorInfo(TokenType.OR, 1, True),  # or
 ]
 
 
@@ -221,6 +221,19 @@ class GlobalStatement(Statement):
         return f'global {", ".join(map(lambda x: repr(x), self.arguments))};'
 
 
+class AssignmentStatement(Statement):
+    def __init__(self, left: Union[Identifier, 'MemberExpression'] = None, operator: str = None,
+                 right: Expression = None,
+                 start: Location = None, end: Location = None):
+        super().__init__(start=start, end=end)
+        self.left: Union[Identifier, 'MemberExpression'] = left
+        self.operator: str = operator
+        self.right: Expression = right
+
+    def __repr__(self):
+        return f'({self.left!r} {self.operator} {self.right!r})'
+
+
 class FunctionExpression(Expression):
     def __init__(self, params: List[Identifier] = None, body: BlockStatement = None, is_closure: bool = False,
                  start: Location = None, end: Location = None):
@@ -267,19 +280,6 @@ class BinaryExpression(Expression):
                  start: Location = None, end: Location = None):
         super().__init__(start=start, end=end)
         self.left: Expression = left
-        self.operator: str = operator
-        self.right: Expression = right
-
-    def __repr__(self):
-        return f'({self.left!r} {self.operator} {self.right!r})'
-
-
-class AssignmentExpression(Expression):
-    def __init__(self, left: Union[Identifier, 'MemberExpression'] = None, operator: str = None,
-                 right: Expression = None,
-                 start: Location = None, end: Location = None):
-        super().__init__(start=start, end=end)
-        self.left: Union[Identifier, 'MemberExpression'] = left
         self.operator: str = operator
         self.right: Expression = right
 
@@ -462,6 +462,15 @@ class Parser:
             return self.parse_statement_block()
         else:
             ast_node = self.parse_expression()
+            if self.current_token.type in assignment_token_list:
+                assignment_token = self.current_token.type
+                if not isinstance(ast_node, Identifier) and not isinstance(ast_node, MemberExpression):
+                    raise ParserError(error_code=ErrorCode.ASSIGNING_TO_RVALUE,
+                                      message=f'Can only assigning to id or member expression, not {ast_node!r}')
+                self.advance_token()
+                right = self.parse_expression()
+                ast_node = AssignmentStatement(ast_node, assignment_token.value, right,
+                                               start=ast_node.start, end=right.end)
             self.token_match(TokenType.SEMI)
             self.advance_token()
         return ast_node
@@ -478,31 +487,19 @@ class Parser:
         return ast_node
 
     def parse_expression(self, min_precedence: int = 1):
-        def get_binary_operator_info(token: Token):
-            for operator_info in binary_operator_list:
-                if operator_info.token_type == token.type:
-                    return operator_info
-            return None
-
         start = self.current_token.start
         left = self.parse_expression_unary()
         while True:
-            current_operator_info = get_binary_operator_info(self.current_token)
+            current_operator_info = None
+            for operator_info in binary_operator_list:
+                if operator_info.token_type == self.current_token.type:
+                    current_operator_info = operator_info
             if current_operator_info is None or current_operator_info.precedence < min_precedence:
                 break
             precedence = current_operator_info.precedence
             self.advance_token()
-            if current_operator_info.token_type in get_operator_token_type_list(assignment_operator_list):
-                if not isinstance(left, Identifier) and not isinstance(left, MemberExpression):
-                    raise ParserError(error_code=ErrorCode.ASSIGNING_TO_RVALUE,
-                                      message=f'Can only assigning to id or member expression, not {left!r}')
-                right = self.parse_expression(precedence + 1 if current_operator_info.associativity else precedence)
-                left = AssignmentExpression(left, current_operator_info.value, right,
-                                            start=start, end=self.previous_token.end)
-            else:
-                right = self.parse_expression(precedence + 1 if current_operator_info.associativity else precedence)
-                left = BinaryExpression(left, current_operator_info.value, right,
-                                        start=start, end=self.previous_token.end)
+            right = self.parse_expression(precedence + 1 if current_operator_info.associativity else precedence)
+            left = BinaryExpression(left, current_operator_info.value, right, start=start, end=self.previous_token.end)
         return left
 
     def parse_expression_unary(self):

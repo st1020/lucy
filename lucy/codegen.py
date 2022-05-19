@@ -51,8 +51,7 @@ class OPCodes(Enum):
     ROT_TWO = OPCode('ROT_TWO', 0, ArgumentType.NONE)  # 交换栈顶两个堆栈项
     LOAD_NAME = OPCode('LOAD_NAME', 1, ArgumentType.NAME_INDEX)  # push(name)
     LOAD_CONST = OPCode('LOAD_CONST', 1, ArgumentType.CONST_INDEX)  # push(const)
-    STORE = OPCode('STORE', 1, ArgumentType.NAME_INDEX)  # name = TOS
-    STORE_POP = OPCode('STORE_POP', 1, ArgumentType.NAME_INDEX)  # name = TOS, pop()
+    STORE = OPCode('STORE', 1, ArgumentType.NAME_INDEX)  # name = TOS, pop()
     GLOBAL = OPCode('GLOBAL', 1, ArgumentType.NAME_INDEX)  # name = &global(name)
 
     # 弹出 2 * count 项使得字典包含 count 个条目: {..., TOS3: TOS2, TOS1: TOS}
@@ -258,7 +257,7 @@ class CodeGenerator:
             code_list += [
                 continue_label,
                 Code(OPCodes.FOR, break_label),
-                Code(OPCodes.STORE_POP, self.add_name_list(ast_node.left.name)),
+                Code(OPCodes.STORE, self.add_name_list(ast_node.left.name)),
             ]
             code_list += self.gen_code_statement(ast_node.body)
             code_list += [
@@ -305,7 +304,7 @@ class CodeGenerator:
             code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(func)))
             func.code_list.append(func)
             for param in ast_node.params:
-                func.code_list.append(Code(OPCodes.STORE_POP, self.add_name_list(param.name)))
+                func.code_list.append(Code(OPCodes.STORE, self.add_name_list(param.name)))
             func.code_list += self.gen_code_statement(ast_node.body)
             if not isinstance(func.code_list[-1], Code) or func.code_list[-1].opcode != OPCodes.RETURN.value:
                 func.code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(None)))
@@ -345,7 +344,7 @@ class CodeGenerator:
                     code_list.append(Code(OPCodes.COMPARE_OP, cmp_op.index(ast_node.operator)))
                 else:
                     code_list.append(Code(binary_operator_to_opcodes[ast_node.operator]))
-        elif isinstance(ast_node, AssignmentExpression):
+        elif isinstance(ast_node, AssignmentStatement):
             # 赋值
             if isinstance(ast_node.left, Identifier):
                 if ast_node.operator == '=':
@@ -369,6 +368,7 @@ class CodeGenerator:
                     code_list.append(Code(OPCodes.SET_ITEM))
                 else:
                     code_list.append(Code(OPCodes.SET_ATTR))
+                code_list.append(Code(OPCodes.POP))
         elif isinstance(ast_node, MemberExpression):
             # 取成员
             code_list += self.gen_code(ast_node.table)

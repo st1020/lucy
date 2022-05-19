@@ -56,8 +56,10 @@ class OPCodes(Enum):
 
     # 弹出 2 * count 项使得字典包含 count 个条目: {..., TOS3: TOS2, TOS1: TOS}
     BUILD_TABLE = OPCode('BUILD_TABLE', 1, ArgumentType.NUMBER)
-    GET_TABLE = OPCode('GET_TABLE', 0, ArgumentType.NONE)  # TOS = TOS1[TOS]
-    SET_TABLE = OPCode('SET_TABLE', 0, ArgumentType.NONE)  # TOS2[TOS1] = TOS
+    GET_ATTR = OPCode('GET_ATTR', 0, ArgumentType.NONE)  # TOS = TOS1.TOS
+    GET_ITEM = OPCode('GET_ITEM', 0, ArgumentType.NONE)  # TOS = TOS1[TOS]
+    SET_ATTR = OPCode('SET_ATTR', 0, ArgumentType.NONE)  # TOS2.TOS1 = TOS
+    SET_ITEM = OPCode('SET_ITEM', 0, ArgumentType.NONE)  # TOS2[TOS1] = TOS
     FOR = OPCode('FOR', 1, ArgumentType.ADDRESS)  # push(call(TOS)) 如果 TOS 无下个迭代项，则 pop() 并 JUMP 到 target
 
     NEG = OPCode('NEG', 0, ArgumentType.NONE)  # TOS = -TOS
@@ -361,16 +363,20 @@ class CodeGenerator:
                     code_list += self.gen_code(ast_node.left)
                     code_list += self.gen_code(ast_node.right)
                     code_list.append(Code(binary_operator_to_opcodes[ast_node.operator[0]]))
-                code_list.append(Code(OPCodes.SET_TABLE))
+                if ast_node.left.expression_type == '[]':
+                    code_list.append(Code(OPCodes.SET_ITEM))
+                else:
+                    code_list.append(Code(OPCodes.SET_ATTR))
         elif isinstance(ast_node, MemberExpression):
             # 取成员
             code_list += self.gen_code(ast_node.table)
             if ast_node.expression_type == '[]':
                 code_list += self.gen_code(ast_node.property)
+                code_list.append(Code(OPCodes.GET_ITEM))
             else:
                 assert isinstance(ast_node.property, Identifier)
                 code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(ast_node.property.name)))
-            code_list.append(Code(OPCodes.GET_TABLE))
+                code_list.append(Code(OPCodes.GET_ATTR))
         elif isinstance(ast_node, CallExpression):
             # 函数调用
             if isinstance(ast_node.callee, MemberExpression) and ast_node.callee.expression_type == '.':
@@ -378,7 +384,7 @@ class CodeGenerator:
                 code_list.append(Code(OPCodes.DUP))
                 assert isinstance(ast_node.callee.property, Identifier)
                 code_list.append(Code(OPCodes.LOAD_CONST, self.add_const_list(ast_node.callee.property.name)))
-                code_list.append(Code(OPCodes.GET_TABLE))
+                code_list.append(Code(OPCodes.GET_ATTR))
                 code_list.append(Code(OPCodes.ROT_TWO))
                 for argument in ast_node.arguments:
                     code_list += self.gen_code(argument)

@@ -103,10 +103,15 @@ class GlobalReference:
 
 
 class StackFrame:
-    def __init__(self, closure: ClosureData, operate_stack: List[T_Data] = None, return_address: int = 0):
+    def __init__(self,
+                 closure: ClosureData,
+                 operate_stack: List[T_Data] = None,
+                 return_address: int = 0,
+                 no_return: bool = False):
         self.closure: ClosureData = closure
         self.operate_stack: List[T_Data] = operate_stack if operate_stack is not None else list()
         self.return_address: int = return_address
+        self.no_return: bool = no_return
         self.call_flag: bool = False
 
 
@@ -205,19 +210,44 @@ class LVM:
                     self.check_type(arg1, HASHABLE_DATA_TYPE)
                     table[arg1] = arg2
                 self.current_operate_stack.append(table)
-            elif self.current_code.opcode == OPCodes.GET_TABLE:
+            elif self.current_code.opcode == OPCodes.GET_ATTR or self.current_code.opcode == OPCodes.GET_ITEM:
+                table_key = ''
+                if self.current_code.opcode == OPCodes.GET_ATTR:
+                    table_key = '__getattr__'
+                elif self.current_code.opcode == OPCodes.GET_ITEM:
+                    table_key = '__getitem__'
                 arg2 = self.current_operate_stack.pop()
                 arg1 = self.current_operate_stack.pop()
                 self.check_type(arg1, (TableData,))
                 self.check_type(arg2, HASHABLE_DATA_TYPE)
-                self.current_operate_stack.append(arg1.get(arg2))
-            elif self.current_code.opcode == OPCodes.SET_TABLE:
+                if isinstance(arg1[table_key], ClosureData):
+                    self.current_operate_stack.append(arg1[table_key])
+                    self.current_operate_stack.append(arg1)
+                    self.current_operate_stack.append(arg2)
+                    self.code_call(arg_num=2)
+                    continue
+                else:
+                    self.current_operate_stack.append(arg1.get(arg2))
+            elif self.current_code.opcode == OPCodes.SET_ATTR or self.current_code.opcode == OPCodes.SET_ITEM:
+                table_key = ''
+                if self.current_code.opcode == OPCodes.SET_ATTR:
+                    table_key = '__setattr__'
+                elif self.current_code.opcode == OPCodes.SET_ITEM:
+                    table_key = '__setitem__'
                 arg3 = self.current_operate_stack.pop()
                 arg2 = self.current_operate_stack.pop()
                 arg1 = self.current_operate_stack[-1]
                 self.check_type(arg1, (TableData,))
                 self.check_type(arg2, HASHABLE_DATA_TYPE)
-                arg1[arg2] = arg3
+                if isinstance(arg1[table_key], ClosureData):
+                    self.current_operate_stack.append(arg1[table_key])
+                    self.current_operate_stack.append(arg1)
+                    self.current_operate_stack.append(arg2)
+                    self.current_operate_stack.append(arg3)
+                    self.code_call(arg_num=3, no_return=True)
+                    continue
+                else:
+                    arg1[arg2] = arg3
             elif self.current_code.opcode == OPCodes.FOR:
                 if self.call_stack[-1].call_flag:
                     self.call_stack[-1].call_flag = False
@@ -361,10 +391,11 @@ class LVM:
             elif self.current_code.opcode == OPCodes.RETURN:
                 return_value = self.current_operate_stack.pop()
                 self.pc = self.current_return_address
-                self.call_stack.pop()
+                temp = self.call_stack.pop()
                 if len(self.call_stack) == 0:
                     break
-                self.call_stack[-1].operate_stack.append(return_value)
+                if not temp.no_return:
+                    self.call_stack[-1].operate_stack.append(return_value)
                 continue
             self.pc += 1
 
@@ -385,7 +416,7 @@ class LVM:
         else:
             temp[value] = self.current_operate_stack[-1]
 
-    def code_call(self, arg_num: int = None, return_address: int = None, pop: bool = True):
+    def code_call(self, arg_num: int = None, return_address: int = None, pop: bool = True, no_return: bool = False):
         if arg_num is None:
             arg_num = self.current_code.argument
         if return_address is None:
@@ -427,6 +458,7 @@ class LVM:
             self.call_stack.append(StackFrame(
                 closure=closure,
                 operate_stack=arguments_list,
-                return_address=return_address
+                return_address=return_address,
+                no_return=no_return,
             ))
             self.pc = closure.function.address

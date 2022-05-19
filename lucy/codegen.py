@@ -47,6 +47,7 @@ class OPCode:
 class OPCodes(Enum):
     POP = OPCode('POP', 0, ArgumentType.NONE)  # pop()
     DUP = OPCode('DUP', 0, ArgumentType.NONE)  # 复制栈顶
+    DUP_TWO = OPCode('DUP_TWO', 0, ArgumentType.NONE)  # 复制栈顶两项
     ROT_TWO = OPCode('ROT_TWO', 0, ArgumentType.NONE)  # 交换栈顶两个堆栈项
     LOAD_NAME = OPCode('LOAD_NAME', 1, ArgumentType.NAME_INDEX)  # push(name)
     LOAD_CONST = OPCode('LOAD_CONST', 1, ArgumentType.CONST_INDEX)  # push(const)
@@ -356,11 +357,12 @@ class CodeGenerator:
                 code_list.append(Code(OPCodes.STORE, self.add_name_list(ast_node.left.name)))
             elif isinstance(ast_node.left, MemberExpression):
                 code_list += self.gen_code(ast_node.left)
-                code_list.pop()
+                temp = code_list.pop()
                 if ast_node.operator == '=':
                     code_list += self.gen_code(ast_node.right)
                 else:
-                    code_list += self.gen_code(ast_node.left)
+                    code_list.append(Code(OPCodes.DUP_TWO))
+                    code_list.append(temp)
                     code_list += self.gen_code(ast_node.right)
                     code_list.append(Code(binary_operator_to_opcodes[ast_node.operator[0]]))
                 if ast_node.left.expression_type == '[]':

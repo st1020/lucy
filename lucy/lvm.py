@@ -187,6 +187,8 @@ class LVM:
                 self.current_operate_stack.pop()
             elif self.current_code.opcode == OPCodes.DUP:
                 self.current_operate_stack.append(self.current_operate_stack[-1])
+            elif self.current_code.opcode == OPCodes.DUP_TWO:
+                self.current_operate_stack += self.current_operate_stack[-2:]
             elif self.current_code.opcode == OPCodes.ROT_TWO:
                 arg1 = self.current_operate_stack.pop()
                 arg2 = self.current_operate_stack.pop()

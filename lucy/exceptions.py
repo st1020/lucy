@@ -18,6 +18,7 @@ class ErrorCode(Enum):
     # LVMError
     TYPE_ERROR = 'Type Error'
     CALL_ERROR = 'Call Error'
+    IMPORT_ERROR = 'Import Error'
     EXTEND_FUNCTION_ERROR = 'Extend Function Error'
 
 

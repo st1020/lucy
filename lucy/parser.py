@@ -123,6 +123,17 @@ class Property(ASTNode):
         return f'{self.key!r}: {self.value!r}'
 
 
+class ImportNameAlias(ASTNode):
+    def __init__(self, name: Identifier = None, alias: Optional[Identifier] = None,
+                 start: Location = None, end: Location = None):
+        super().__init__(start=start, end=end)
+        self.name: Identifier = name
+        self.alias: Optional[Identifier] = alias
+
+    def __repr__(self):
+        return self.name.name + ' as ' + self.alias.name if self.alias.name is not None else self.name.name
+
+
 class BlockStatement(Statement):
     def __init__(self, body: List[Statement] = None,
                  start: Location = None, end: Location = None):
@@ -232,6 +243,39 @@ class AssignmentStatement(Statement):
 
     def __repr__(self):
         return f'({self.left!r} {self.operator} {self.right!r})'
+
+
+class ImportStatement(Statement):
+    def __init__(self, paths: List[Identifier] = None, alias: Optional[Identifier] = None,
+                 start: Location = None, end: Location = None):
+        super().__init__(start=start, end=end)
+        if paths is None:
+            paths = list()
+        self.paths: List[Identifier] = paths
+        self.alias: Optional[Identifier] = alias
+
+    def __repr__(self):
+        return 'import ' + '.'.join(map(lambda x: x.name, self.paths)) + \
+               (' as ' + self.alias.name) if self.alias is not None else '' + ';'
+
+
+class FromImportStatement(Statement):
+    def __init__(self, paths: List[Identifier] = None, names: List[ImportNameAlias] = None, star: bool = False,
+                 start: Location = None, end: Location = None):
+        super().__init__(start=start, end=end)
+        if paths is None:
+            paths = list()
+        if names is None:
+            names = list()
+        self.paths: List[Identifier] = paths
+        self.names: List[ImportNameAlias] = names
+        self.star: bool = star
+
+    def __repr__(self):
+        if self.star:
+            return f'from {"::".join(map(lambda x: x.name, self.paths))} import *;'
+        else:
+            return f'from {"::".join(map(lambda x: x.name, self.paths))} import {", ".join(map(repr, self.names))};'
 
 
 class FunctionExpression(Expression):
@@ -452,15 +496,64 @@ class Parser:
                 ast_node.arguments.append(self.parse_expression_identifier())
                 self.advance_token()
                 if self.current_token.type != TokenType.SEMI and self.current_token.type != TokenType.COMMA:
-                    raise self.error(expect_token_type=TokenType.COMMA)
+                    self.error(expect_token_type=TokenType.COMMA)
             self.advance_token()
             ast_node.end = self.previous_token.end
-            return ast_node
-        # func 不需要单独解析，通过 parse_expression 解析
+        elif self.current_token.type == TokenType.IMPORT:
+            ast_node = ImportStatement()
+            ast_node.start = self.current_token.start
+            self.advance_token()
+            while self.current_token.type != TokenType.SEMI or self.current_token.type == TokenType.AS:
+                self.token_match(TokenType.ID)
+                ast_node.paths.append(self.parse_expression_identifier())
+                self.advance_token()
+                if self.current_token.type == TokenType.SEMI or self.current_token.type == TokenType.AS:
+                    break
+                self.token_match(TokenType.POINT)
+                self.advance_token()
+            if self.current_token.type == TokenType.AS:
+                self.advance_token_match(TokenType.ID)
+                ast_node.alias = self.parse_expression_identifier()
+                self.advance_token_match(TokenType.SEMI)
+            self.advance_token()
+            ast_node.end = self.previous_token.end
+        elif self.current_token.type == TokenType.FROM:
+            ast_node = FromImportStatement()
+            ast_node.start = self.current_token.start
+            self.advance_token()
+            while self.current_token.type != TokenType.IMPORT:
+                self.token_match(TokenType.ID)
+                ast_node.paths.append(self.parse_expression_identifier())
+                self.advance_token()
+                if self.current_token.type == TokenType.IMPORT:
+                    break
+                self.token_match(TokenType.POINT)
+                self.advance_token()
+            self.advance_token()
+            if self.current_token.type == TokenType.MUL:
+                ast_node.star = True
+                self.advance_token_match(TokenType.SEMI)
+            else:
+                while self.current_token.type != TokenType.SEMI:
+                    self.token_match(TokenType.ID)
+                    temp = ImportNameAlias(name=self.parse_expression_identifier())
+                    ast_node.names.append(temp)
+                    self.advance_token()
+                    if self.current_token.type == TokenType.AS:
+                        self.advance_token_match(TokenType.ID)
+                        temp.alias = self.parse_expression_identifier()
+                        self.advance_token()
+                    if self.current_token.type == TokenType.SEMI:
+                        break
+                    self.token_match(TokenType.COMMA)
+                    self.advance_token()
+            self.advance_token()
+            ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.LBRACE:
             # block
             return self.parse_statement_block()
         else:
+            # func 不需要单独解析，通过 parse_expression 解析
             ast_node = self.parse_expression()
             if self.current_token.type in assignment_token_list:
                 assignment_token = self.current_token.type

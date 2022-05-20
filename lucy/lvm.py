@@ -1,80 +1,9 @@
-from typing import List, Dict, Union, Optional, Tuple, Callable
+from typing import List, Tuple
 
+from .lucy_data import *
+from .libs import lib_table
 from .exceptions import LVMError, ErrorCode
 from .codegen import CodeProgram, OPCodes, Function, cmp_op
-
-
-class ExtendFunction(Function):
-    def __init__(self, params_num: int, func: Callable):
-        super().__init__(params_num)
-        self.is_closure = Function
-        self.func = func
-
-    def __repr__(self):
-        return f'ExtendFunction({self.func!r})'
-
-
-NullData = type(None)
-BooleanData = bool
-IntegerData = int
-FloatData = float
-StringData = str
-
-
-class TableData(Dict['T_Data', 'T_Data']):
-    def __getitem__(self, item):
-        try:
-            return super().__getitem__(item)
-        except KeyError:
-            return NullData()
-
-    def __setitem__(self, key, value):
-        if isinstance(value, NullData):
-            try:
-                del self[key]
-            except KeyError:
-                pass
-        else:
-            super().__setitem__(key, value)
-
-    def get(self, key: 'T_Data') -> 'T_Data':
-        table = self
-        while not isinstance(table, NullData):
-            item = table[key]
-            if not isinstance(item, NullData):
-                return item
-            table = table['__base__']
-            if not isinstance(table, TableData):
-                break
-        return NullData()
-
-    def row_get(self, key: 'T_Data') -> 'T_Data':
-        return self[key]
-
-
-class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference']]):
-    pass
-
-
-class ClosureData:
-    def __init__(self, function: Optional[Function], base_closure: Optional['ClosureData'] = None):
-        self.function: Optional[Function] = function
-        self.base_closure: Optional[ClosureData] = base_closure
-        self._variables: Optional[VariablesDict] = None
-
-    @property
-    def variables(self):
-        if self._variables is None:
-            self._variables = VariablesDict()
-        return self._variables
-
-    def __repr__(self):
-        return repr(self.function)
-
-
-T_Data = Union[NullData, BooleanData, IntegerData, FloatData, StringData, TableData, ClosureData]
-HASHABLE_DATA_TYPE = (NullData, BooleanData, IntegerData, FloatData, StringData)
-LUCY_DATA_TYPE = HASHABLE_DATA_TYPE + (TableData, ClosureData)
 
 BINARY_OPCODES = {
     OPCodes.ADD: ('__add__', '+'),
@@ -119,10 +48,7 @@ class LVM:
     def __init__(self, code_program: CodeProgram):
         self.code_program: CodeProgram = code_program
         self.pc: int = 0
-        self.builtin_namespace: VariablesDict = VariablesDict({
-            'print': ExtendFunction(params_num=1, func=print),
-            'input': ExtendFunction(params_num=0, func=input),
-        })
+        self.builtin_namespace: VariablesDict = VariablesDict({})
         self.global_stack_frame: StackFrame = StackFrame(ClosureData(None))
         self.call_stack: List[StackFrame] = [self.global_stack_frame]
 
@@ -178,8 +104,6 @@ class LVM:
                         closure = closure.base_closure
                 if isinstance(target, NullData):
                     target = self.builtin_namespace[value]
-                if isinstance(target, ExtendFunction):
-                    target = ClosureData(function=target)
                 self.current_operate_stack.append(target)
             elif self.current_code.opcode == OPCodes.STORE:
                 value = self.code_program.name_list[self.current_code.argument]
@@ -212,6 +136,29 @@ class LVM:
             elif self.current_code.opcode == OPCodes.GLOBAL:
                 value = self.code_program.name_list[self.current_code.argument]
                 self.current_variables[value] = GlobalReference()
+            elif self.current_code.opcode == OPCodes.IMPORT:
+                temp = self.code_program.const_list[self.current_code.argument].split('.')
+                if temp[0] in lib_table.keys():
+                    value = lib_table
+                    for i in temp:
+                        value = value[i]
+                        if isinstance(value, NullData):
+                            raise LVMError(ErrorCode.IMPORT_ERROR, f'can not find {i} in {value!r}')
+                    self.current_operate_stack.append(value)
+                else:
+                    raise NotImplementedError
+            elif self.current_code.opcode == OPCodes.IMPORT_FROM:
+                arg1 = self.current_operate_stack[-1]
+                self.check_type(arg1, (TableData,))
+                self.current_operate_stack.append(
+                    arg1.row_get(self.code_program.const_list[self.current_code.argument])
+                )
+            elif self.current_code.opcode == OPCodes.IMPORT_STAR:
+                arg1 = self.current_operate_stack[-1]
+                self.check_type(arg1, (TableData,))
+                for key, value in arg1.items():
+                    if isinstance(key, StringData) and not key.startswith('_'):
+                        self.current_variables[key] = value
             elif self.current_code.opcode == OPCodes.BUILD_TABLE:
                 temp = []
                 for i in range(self.current_code.argument):

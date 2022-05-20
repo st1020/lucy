@@ -238,6 +238,20 @@ class LVM:
                 arg1 = self.current_operate_stack.pop()
                 self.check_type(arg1, (BooleanData,))
                 self.current_operate_stack.append(not arg1)
+            elif self.current_code.opcode == OPCodes.GET_LEN:
+                if self.call_stack[-1].call_flag:
+                    self.call_stack[-1].call_flag = False
+                else:
+                    arg1 = self.current_operate_stack.pop()
+                    if isinstance(arg1, TableData) and isinstance(arg1['__len__'], ClosureData):
+                        self.current_operate_stack.append(arg1['__len__'])
+                        self.current_operate_stack.append(arg1)
+                        self.call_stack[-1].call_flag = True
+                        self.code_call(arg_num=1, return_address=self.pc)
+                        continue
+                    else:
+                        self.check_type(arg1, (StringData, TableData))
+                        self.current_operate_stack.append(len(arg1))
             elif self.current_code.opcode in BINARY_OPCODES.keys():
                 table_key, operator_name = BINARY_OPCODES[self.current_code.opcode]
 

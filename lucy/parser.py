@@ -49,6 +49,7 @@ unary_operator_list = [
     OperatorInfo(TokenType.ADD, 8, False),  # +
     OperatorInfo(TokenType.SUB, 8, False),  # -
     OperatorInfo(TokenType.NOT, 8, False),  # !
+    OperatorInfo(TokenType.HASH, 8, False),  # #
 ]
 
 binary_operator_list = [
@@ -131,7 +132,7 @@ class ImportNameAlias(ASTNode):
         self.alias: Optional[Identifier] = alias
 
     def __repr__(self):
-        return self.name.name + ' as ' + self.alias.name if self.alias.name is not None else self.name.name
+        return self.name.name + ' as ' + self.alias.name if self.alias is not None else self.name.name
 
 
 class BlockStatement(Statement):
@@ -537,13 +538,16 @@ class Parser:
                 while self.current_token.type != TokenType.SEMI:
                     self.token_match(TokenType.ID)
                     temp = ImportNameAlias(name=self.parse_expression_identifier())
+                    temp.start = self.current_token.start
                     ast_node.names.append(temp)
                     self.advance_token()
                     if self.current_token.type == TokenType.AS:
                         self.advance_token_match(TokenType.ID)
                         temp.alias = self.parse_expression_identifier()
+                        temp.end = self.current_token.end
                         self.advance_token()
                     if self.current_token.type == TokenType.SEMI:
+                        temp.end = self.previous_token.end
                         break
                     self.token_match(TokenType.COMMA)
                     self.advance_token()

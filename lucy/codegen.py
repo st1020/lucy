@@ -68,6 +68,7 @@ class OPCodes(Enum):
 
     NEG = OPCode('NEG', 0, ArgumentType.NONE)  # TOS = -TOS
     NOT = OPCode('NOT', 0, ArgumentType.NONE)  # TOS = not TOS
+    GET_LEN = OPCode('GET_LEN', 0, ArgumentType.NONE)  # TOS = #TOS
 
     ADD = OPCode('ADD', 0, ArgumentType.NONE)  # TOS = TOS1 + TOS
     SUB = OPCode('SUB', 0, ArgumentType.NONE)  # TOS = TOS1 - TOS
@@ -350,6 +351,8 @@ class CodeGenerator:
                 code_list.append(Code(OPCodes.NEG))
             elif ast_node.operator == '!':
                 code_list.append(Code(OPCodes.NOT))
+            elif ast_node.operator == '#':
+                code_list.append(Code(OPCodes.GET_LEN))
         elif isinstance(ast_node, BinaryExpression):
             # 二元运算
             if ast_node.operator == 'and' or ast_node.operator == 'or':

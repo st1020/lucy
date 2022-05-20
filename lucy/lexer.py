@@ -76,6 +76,7 @@ class TokenType(Enum):
     MOD = '%'
 
     NOT = '!'
+    HASH = '#'
     LESS = '<'
     GREATER = '>'
 

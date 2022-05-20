@@ -299,13 +299,14 @@ class CodeGenerator:
             for argument in ast_node.arguments:
                 code_list.append(Code(OPCodes.GLOBAL, self.add_name_list(argument.name)))
         elif isinstance(ast_node, ImportStatement):
+            # import
             code_list.append(Code(OPCodes.IMPORT, self.add_const_list('.'.join(map(lambda x: x.name, ast_node.paths)))))
             if ast_node.alias is None:
                 code_list.append(Code(OPCodes.STORE, self.add_name_list(ast_node.paths[-1].name)))
             else:
                 code_list.append(Code(OPCodes.STORE, self.add_name_list(ast_node.alias.name)))
-            code_list.append(Code(OPCodes.POP))
         elif isinstance(ast_node, FromImportStatement):
+            # from ... import ...
             code_list.append(Code(OPCodes.IMPORT, self.add_const_list('.'.join(map(lambda x: x.name, ast_node.paths)))))
             if ast_node.star:
                 code_list.append(Code(OPCodes.IMPORT_STAR))

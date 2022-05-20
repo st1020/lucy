@@ -6,7 +6,7 @@ from .codegen import Function
 class ExtendFunction(Function):
     def __init__(self, params_num: int, func: Callable):
         super().__init__(params_num)
-        self.is_closure = Function
+        self.is_closure = False
         self.func = func
 
     def __repr__(self):

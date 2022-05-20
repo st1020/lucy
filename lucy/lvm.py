@@ -141,9 +141,7 @@ class LVM:
             elif self.current_code.opcode == OPCodes.IMPORT_FROM:
                 arg1 = self.current_operate_stack[-1]
                 self.check_type(arg1, (TableData,))
-                self.current_operate_stack.append(
-                    arg1.row_get(self.code_program.const_list[self.current_code.argument])
-                )
+                self.current_operate_stack.append(arg1[self.code_program.const_list[self.current_code.argument]])
             elif self.current_code.opcode == OPCodes.IMPORT_STAR:
                 arg1 = self.current_operate_stack[-1]
                 self.check_type(arg1, (TableData,))

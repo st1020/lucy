@@ -56,9 +56,6 @@ class TableData(Dict['T_Data', 'T_Data']):
                 break
         return NullData()
 
-    def row_get(self, key: 'T_Data') -> 'T_Data':
-        return self[key]
-
 
 class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference']]):
     pass

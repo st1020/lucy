@@ -3,6 +3,15 @@ from typing import Dict, Union, Optional, Callable
 from .codegen import Function
 
 
+class GlobalReference:
+    obj = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls.obj is None:
+            cls.obj = super().__new__(cls)
+        return cls.obj
+
+
 class ExtendFunction(Function):
     def __init__(self, params_num: int, func: Callable):
         super().__init__(params_num)

@@ -22,15 +22,6 @@ COMPARE_OPERATORS = {
 }
 
 
-class GlobalReference:
-    obj = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls.obj is None:
-            cls.obj = super().__new__(cls)
-        return cls.obj
-
-
 class StackFrame:
     def __init__(self,
                  closure: ClosureData,

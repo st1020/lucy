@@ -396,7 +396,7 @@ class LVM:
                     f'Extend function {closure.function!r} return value is not a lucy data'
                 )
             self.current_operate_stack.append(return_value)
-            self.pc += 1
+            self.pc = return_address
         else:
             closure = ClosureData(function=closure.function, base_closure=closure.base_closure)
             self.call_stack.append(StackFrame(

@@ -126,7 +126,8 @@ class LVM:
                             break
                         closure = closure.base_closure
                 if isinstance(target, NullData):
-                    target = self.current_closure.global_closure.variables[value]
+                    if self.current_closure.global_closure is not None:
+                        target = self.current_closure.global_closure.variables[value]
                 if isinstance(target, NullData):
                     target = self.builtin_namespace[value]
                 self.current_operate_stack.append(target)

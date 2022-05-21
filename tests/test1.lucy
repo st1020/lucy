@@ -1,0 +1,18 @@
+from io import print;
+from convert import string;
+a = func () {
+    t = 0;
+    return || {
+        t += 1;
+        if t > 10 {
+            return null;
+        }
+        return t * 2;
+    };
+};
+l = {};
+for i in a() {
+    l[i] = i;
+    print(string(i) + ' ');
+}
+print('\n');

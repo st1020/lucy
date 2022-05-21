@@ -9,6 +9,11 @@ from .exceptions import LVMError, ErrorCode
 from .codegen import CodeGenerator, CodeProgram, OPCodes, Function, cmp_op
 
 
+def _get_code_program(path: str):
+    with open(path, 'r', encoding='utf-8') as f:
+        return CodeGenerator(Parser(Lexer(f.read())).parse()).generate()
+
+
 def lucy_type(data: T_Data) -> StringData:
     if isinstance(data, NullData):
         return 'null'
@@ -104,6 +109,10 @@ class LVM:
         self.current_variables = self.call_stack[-1].closure.variables
         self.current_return_address = self.call_stack[-1].return_address
         self.current_closure = self.call_stack[-1].closure
+
+    @classmethod
+    def run_file(cls, path: str):
+        cls(code_program=_get_code_program(path)).run()
 
     @staticmethod
     def check_type(value: T_Data, data_type: Tuple[type, ...]):
@@ -202,13 +211,12 @@ class LVM:
                             raise LVMError(ErrorCode.IMPORT_ERROR, f'can not find {i} in {value!r}')
                     self.current_operate_stack.append(value)
                 elif temp[0] in self.package_paths.keys():
-                    with open(self.package_paths[temp[0]], 'r', encoding='utf-8') as f:
-                        code_program = CodeGenerator(Parser(Lexer(f.read())).parse()).generate()
+                    code_program = _get_code_program(self.package_paths[temp[0]])
                     self.packages.append(code_program)
-                    lvm = LVM(code_program=code_program,
-                              module_id=self.module_id + 1,
-                              package_paths=self.package_paths,
-                              packages=self.packages)
+                    lvm = self.__class__(code_program=code_program,
+                                         module_id=self.module_id + 1,
+                                         package_paths=self.package_paths,
+                                         packages=self.packages)
                     lvm.run()
                     self.current_operate_stack.append(lvm.export_package())
                 else:

@@ -1,0 +1,12 @@
+from io import println;
+from collections import Dict;
+println(type(1));
+t = Dict::from_table({
+    0: 42,
+    1: 30,
+});
+println(#t);
+println(t[0]);
+for i in t.keys() {
+    println(i);
+}

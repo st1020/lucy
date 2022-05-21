@@ -202,7 +202,7 @@ class Lexer:
                     return Token(TokenType.FLOAT, float(value), start, self.location())
                 else:
                     return Token(TokenType.INTEGER, int(value), start, self.location())
-            elif self.current_char.isalpha():
+            elif self.current_char.isalpha() or self.current_char == '_':
                 # 处理字母
                 # 处理为关键字或ID
                 value = ''

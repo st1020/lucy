@@ -204,12 +204,7 @@ class LVM:
             elif self.current_code.opcode == OPCodes.IMPORT:
                 temp = self.current_code_program.const_list[self.current_code.argument].split('.')
                 if temp[0] in lib_table.keys():
-                    value = lib_table
-                    for i in temp:
-                        value = value[i]
-                        if isinstance(value, NullData):
-                            raise LVMError(ErrorCode.IMPORT_ERROR, f'can not find {i} in {value!r}')
-                    self.current_operate_stack.append(value)
+                    value = lib_table[temp[0]]
                 elif temp[0] in self.package_paths.keys():
                     code_program = _get_code_program(self.package_paths[temp[0]])
                     self.packages.append(code_program)
@@ -218,9 +213,14 @@ class LVM:
                                          package_paths=self.package_paths,
                                          packages=self.packages)
                     lvm.run()
-                    self.current_operate_stack.append(lvm.export_package())
+                    value = lvm.export_package()
                 else:
                     raise LVMError(ErrorCode.IMPORT_ERROR, f'can not find {temp[0]} package')
+                for i in temp[1:]:
+                    value = value[i]
+                    if isinstance(value, NullData):
+                        raise LVMError(ErrorCode.IMPORT_ERROR, f'can not find {i} in {value!r}')
+                self.current_operate_stack.append(value)
             elif self.current_code.opcode == OPCodes.IMPORT_FROM:
                 arg1 = self.current_operate_stack[-1]
                 self.check_type(arg1, (TableData,))

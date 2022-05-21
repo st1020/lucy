@@ -1,9 +1,12 @@
+import os
 from typing import List, Tuple
 
 from .lucy_data import *
+from .lexer import Lexer
+from .parser import Parser
 from .libs import lib_table
 from .exceptions import LVMError, ErrorCode
-from .codegen import CodeProgram, OPCodes, Function, cmp_op
+from .codegen import CodeGenerator, CodeProgram, OPCodes, Function, cmp_op
 
 BINARY_OPCODES = {
     OPCodes.ADD: ('__add__', '+'),
@@ -26,24 +29,47 @@ class StackFrame:
     def __init__(self,
                  closure: ClosureData,
                  operate_stack: List[T_Data] = None,
-                 return_address: int = 0,
+                 return_address: Tuple[int, int] = (0, 0),
                  no_return: bool = False):
         self.closure: ClosureData = closure
         self.operate_stack: List[T_Data] = operate_stack if operate_stack is not None else list()
-        self.return_address: int = return_address
+        self.return_address: Tuple[int, int] = return_address
         self.no_return: bool = no_return
         self.call_flag: bool = False
 
 
 class LVM:
-    def __init__(self, code_program: CodeProgram):
-        self.code_program: CodeProgram = code_program
-        self.pc: int = 0
+    def __init__(self,
+                 code_program: CodeProgram,
+                 module_id: int = 0,
+                 package_paths: Dict[str, str] = None,
+                 packages: List[CodeProgram] = None):
+        if package_paths is None:
+            package_paths = dict()
+            try:
+                libs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'libs')
+                with os.scandir(libs_path) as it:
+                    for entry in it:
+                        if not entry.name.startswith('.') and not entry.name.startswith('_') and entry.is_file():
+                            root, ext = os.path.splitext(entry.name)
+                            if ext == '.lucy':
+                                package_paths[root] = os.path.abspath(entry.path)
+            except NameError:
+                pass
+        self.package_paths: Dict[str, str] = package_paths
+        self.module_id: int = module_id
+        if packages is None:
+            packages = [code_program]
+        self.packages: List[CodeProgram] = packages
         self.builtin_namespace: VariablesDict = VariablesDict({})
-        self.global_stack_frame: StackFrame = StackFrame(ClosureData(None))
+        self.global_stack_frame: StackFrame = StackFrame(ClosureData(module_id=self.module_id, function=None))
         self.call_stack: List[StackFrame] = [self.global_stack_frame]
 
-        self.current_code = self.code_program.code_list[self.pc]
+        self.current_module_id = self.module_id
+        self.pc: int = 0
+
+        self.current_code_program = self.packages[self.current_module_id]
+        self.current_code = self.current_code_program.code_list[self.pc]
         self.current_operate_stack = self.call_stack[-1].operate_stack
         self.current_variables = self.call_stack[-1].closure.variables
         self.current_return_address = self.call_stack[-1].return_address
@@ -69,23 +95,29 @@ class LVM:
             else:
                 unsupported_operand_type(operator)
 
-        while self.pc < len(self.code_program.code_list):
-            self.current_code = self.code_program.code_list[self.pc]
+        while True:
+            self.current_code_program = self.packages[self.current_module_id]
+            self.current_code = self.current_code_program.code_list[self.pc]
             self.current_operate_stack = self.call_stack[-1].operate_stack
             self.current_variables = self.call_stack[-1].closure.variables
             self.current_return_address = self.call_stack[-1].return_address
             self.current_closure = self.call_stack[-1].closure
+            if self.pc >= len(self.current_code_program.code_list):
+                break
 
             if self.current_code.opcode == OPCodes.LOAD_CONST:
-                value = self.code_program.const_list[self.current_code.argument]
+                value = self.current_code_program.const_list[self.current_code.argument]
                 if isinstance(value, Function):
-                    value = ClosureData(function=value, base_closure=self.current_closure if value.is_closure else None)
+                    value = ClosureData(module_id=self.module_id,
+                                        function=value,
+                                        base_closure=self.current_closure if value.is_closure else None,
+                                        global_closure=self.global_stack_frame.closure)
                 self.current_operate_stack.append(value)
             elif self.current_code.opcode == OPCodes.LOAD_NAME:
-                value = self.code_program.name_list[self.current_code.argument]
+                value = self.current_code_program.name_list[self.current_code.argument]
                 target = self.current_variables[value]
                 if isinstance(target, GlobalReference):
-                    target = self.global_stack_frame.closure.variables[value]
+                    target = self.current_closure.global_closure.variables[value]
                 if isinstance(target, NullData):
                     closure = self.current_closure.base_closure
                     while closure is not None:
@@ -94,12 +126,14 @@ class LVM:
                             break
                         closure = closure.base_closure
                 if isinstance(target, NullData):
+                    target = self.current_closure.global_closure.variables[value]
+                if isinstance(target, NullData):
                     target = self.builtin_namespace[value]
                 self.current_operate_stack.append(target)
             elif self.current_code.opcode == OPCodes.STORE:
-                value = self.code_program.name_list[self.current_code.argument]
+                value = self.current_code_program.name_list[self.current_code.argument]
                 if isinstance(self.current_variables[value], GlobalReference):
-                    temp = self.global_stack_frame.closure.variables
+                    temp = self.current_closure.global_closure.variables
                 else:
                     temp = self.current_variables
                     closure = self.current_closure.base_closure
@@ -125,10 +159,10 @@ class LVM:
                 self.current_operate_stack.append(arg1)
                 self.current_operate_stack.append(arg2)
             elif self.current_code.opcode == OPCodes.GLOBAL:
-                value = self.code_program.name_list[self.current_code.argument]
+                value = self.current_code_program.name_list[self.current_code.argument]
                 self.current_variables[value] = GlobalReference()
             elif self.current_code.opcode == OPCodes.IMPORT:
-                temp = self.code_program.const_list[self.current_code.argument].split('.')
+                temp = self.current_code_program.const_list[self.current_code.argument].split('.')
                 if temp[0] in lib_table.keys():
                     value = lib_table
                     for i in temp:
@@ -136,12 +170,24 @@ class LVM:
                         if isinstance(value, NullData):
                             raise LVMError(ErrorCode.IMPORT_ERROR, f'can not find {i} in {value!r}')
                     self.current_operate_stack.append(value)
+                elif temp[0] in self.package_paths.keys():
+                    with open(self.package_paths[temp[0]], 'r', encoding='utf-8') as f:
+                        code_program = CodeGenerator(Parser(Lexer(f.read())).parse()).generate()
+                    self.packages.append(code_program)
+                    lvm = LVM(code_program=code_program,
+                              module_id=self.module_id + 1,
+                              package_paths=self.package_paths,
+                              packages=self.packages)
+                    lvm.run()
+                    self.current_operate_stack.append(lvm.export_package())
                 else:
-                    raise NotImplementedError
+                    raise LVMError(ErrorCode.IMPORT_ERROR, f'can not find {temp[0]} package')
             elif self.current_code.opcode == OPCodes.IMPORT_FROM:
                 arg1 = self.current_operate_stack[-1]
                 self.check_type(arg1, (TableData,))
-                self.current_operate_stack.append(arg1[self.code_program.const_list[self.current_code.argument]])
+                self.current_operate_stack.append(
+                    arg1[self.current_code_program.const_list[self.current_code.argument]]
+                )
             elif self.current_code.opcode == OPCodes.IMPORT_STAR:
                 arg1 = self.current_operate_stack[-1]
                 self.check_type(arg1, (TableData,))
@@ -207,7 +253,7 @@ class LVM:
                         continue
                 else:
                     self.call_stack[-1].call_flag = True
-                    self.code_call(arg_num=0, return_address=self.pc, pop=False)
+                    self.code_call(arg_num=0, return_pc=self.pc, pop=False)
                     continue
             elif self.current_code.opcode == OPCodes.NEG:
                 if self.call_stack[-1].call_flag:
@@ -218,7 +264,7 @@ class LVM:
                         self.current_operate_stack.append(arg1['__neg__'])
                         self.current_operate_stack.append(arg1)
                         self.call_stack[-1].call_flag = True
-                        self.code_call(arg_num=1, return_address=self.pc)
+                        self.code_call(arg_num=1, return_pc=self.pc)
                         continue
                     else:
                         self.check_type(arg1, (IntegerData, FloatData))
@@ -236,7 +282,7 @@ class LVM:
                         self.current_operate_stack.append(arg1['__len__'])
                         self.current_operate_stack.append(arg1)
                         self.call_stack[-1].call_flag = True
-                        self.code_call(arg_num=1, return_address=self.pc)
+                        self.code_call(arg_num=1, return_pc=self.pc)
                         continue
                     else:
                         self.check_type(arg1, (StringData, TableData))
@@ -255,7 +301,7 @@ class LVM:
                         self.current_operate_stack.append(arg1)
                         self.current_operate_stack.append(arg2)
                         self.call_stack[-1].call_flag = True
-                        self.code_call(arg_num=2, return_address=self.pc)
+                        self.code_call(arg_num=2, return_pc=self.pc)
                         continue
                     elif self.current_code.opcode == OPCodes.ADD and isinstance(arg1, StringData):
                         if not isinstance(arg2, StringData):
@@ -292,7 +338,7 @@ class LVM:
                         self.current_operate_stack.append(arg1)
                         self.current_operate_stack.append(arg2)
                         self.call_stack[-1].call_flag = True
-                        self.code_call(arg_num=2, return_address=self.pc)
+                        self.code_call(arg_num=2, return_pc=self.pc)
                         continue
                     elif operator_name != '==' and operator_name != '!=':
                         number_only_operator(operator_name)
@@ -354,7 +400,7 @@ class LVM:
                 continue
             elif self.current_code.opcode == OPCodes.RETURN:
                 return_value = self.current_operate_stack.pop()
-                self.pc = self.current_return_address
+                self.current_module_id, self.pc = self.current_return_address
                 temp = self.call_stack.pop()
                 if len(self.call_stack) == 0:
                     break
@@ -363,28 +409,32 @@ class LVM:
                 continue
             self.pc += 1
 
-    def code_call(self, arg_num: int = None, return_address: int = None, pop: bool = True, no_return: bool = False):
+    def code_call(self, arg_num: int = None, return_pc: int = None, pop: bool = True, no_return: bool = False):
         if arg_num is None:
             arg_num = self.current_code.argument
-        if return_address is None:
-            return_address = self.pc + 1
+        if return_pc is None:
+            return_pc = self.pc + 1
 
         arguments_list = [self.current_operate_stack.pop() for _ in range(arg_num)]
+
         if pop:
             closure = self.current_operate_stack.pop()
         else:
             # 不弹出栈顶的 closure，用于 for
             closure = self.current_operate_stack[-1]
+
         if isinstance(closure, TableData) and isinstance(closure['__call__'], ClosureData):
             arguments_list.append(closure)
             closure = closure['__call__']
         if not isinstance(closure, ClosureData):
             raise LVMError(ErrorCode.TYPE_ERROR, f'{type(closure)} is not callable')
+
         if len(arguments_list) != closure.function.params_num:
             raise LVMError(
                 ErrorCode.CALL_ERROR,
                 f'{closure} require {closure.function.params_num} arguments, but {len(arguments_list)} was given'
             )
+
         if isinstance(closure.function, ExtendFunction):
             try:
                 return_value = closure.function.func(*reversed(arguments_list))
@@ -399,13 +449,20 @@ class LVM:
                     f'Extend function {closure.function!r} return value is not a lucy data'
                 )
             self.current_operate_stack.append(return_value)
-            self.pc = return_address
+            self.pc = return_pc
         else:
-            closure = ClosureData(function=closure.function, base_closure=closure.base_closure)
+            closure = ClosureData(module_id=closure.module_id,
+                                  function=closure.function,
+                                  base_closure=closure.base_closure,
+                                  global_closure=closure.global_closure)
             self.call_stack.append(StackFrame(
                 closure=closure,
                 operate_stack=arguments_list,
-                return_address=return_address,
+                return_address=(self.current_module_id, return_pc),
                 no_return=no_return,
             ))
+            self.current_module_id = closure.module_id
             self.pc = closure.function.address
+
+    def export_package(self) -> TableData:
+        return self.global_stack_frame.closure.variables

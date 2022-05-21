@@ -62,9 +62,15 @@ class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference']]):
 
 
 class ClosureData:
-    def __init__(self, function: Optional[Function], base_closure: Optional['ClosureData'] = None):
+    def __init__(self,
+                 function: Optional[Function],
+                 module_id: int = 0,
+                 base_closure: Optional['ClosureData'] = None,
+                 global_closure: Optional['ClosureData'] = None):
         self.function: Optional[Function] = function
+        self.module_id: int = module_id
         self.base_closure: Optional[ClosureData] = base_closure
+        self.global_closure: Optional[ClosureData] = global_closure
         self._variables: Optional[VariablesDict] = None
 
     @property

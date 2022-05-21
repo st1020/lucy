@@ -1,0 +1,31 @@
+import table;
+
+Dict = {
+    'new': func() {
+        return Dict::from_table({});
+    },
+    'from_table': func(t) {
+        return {
+            '__base__': Dict,
+            '__dict__': t,
+        };
+    },
+    '__len__': func(self) {
+        return table::raw_len(self.__dict__);
+    },
+    '__getitem__': func(self, key) {
+        return table::raw_get(self.__dict__, key);
+    },
+    '__setitem__': func(self, key, value) {
+        table::raw_set(self.__dict__, key, value);
+    },
+    'keys': func(self) {
+        return table::keys(self.__dict__);
+    },
+    'values': func(self) {
+        return table::values(self.__dict__);
+    },
+    'clear': func(self) {
+        self.__dict__ = {};
+    },
+};

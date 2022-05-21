@@ -26,7 +26,7 @@ def table_raw_len(table: TableData):
 
 
 def table_raw_get(table: TableData, key: T_Data):
-    return table[key]
+    return table.raw_get(key)
 
 
 def table_raw_set(table: TableData, key: T_Data, value: T_Data):

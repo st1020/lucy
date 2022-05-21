@@ -223,7 +223,7 @@ class LVM:
                     self.code_call(arg_num=2)
                     continue
                 else:
-                    self.current_operate_stack.append(arg1.get(arg2))
+                    self.current_operate_stack.append(arg1[arg2])
             elif self.current_code.opcode == OPCodes.SET_ATTR or self.current_code.opcode == OPCodes.SET_ITEM:
                 table_key = ''
                 if self.current_code.opcode == OPCodes.SET_ATTR:

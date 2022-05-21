@@ -30,11 +30,22 @@ StringData = str
 
 
 class TableData(Dict['T_Data', 'T_Data']):
-    def __getitem__(self, item):
+    def raw_get(self, key):
         try:
-            return super().__getitem__(item)
+            return super().__getitem__(key)
         except KeyError:
             return NullData()
+
+    def __getitem__(self, key):
+        table = self
+        while not isinstance(table, NullData):
+            item = table.raw_get(key)
+            if not isinstance(item, NullData):
+                return item
+            table = table.raw_get('__base__')
+            if not isinstance(table, TableData):
+                break
+        return NullData()
 
     def __setitem__(self, key, value):
         if isinstance(value, NullData):
@@ -44,17 +55,6 @@ class TableData(Dict['T_Data', 'T_Data']):
                 pass
         else:
             super().__setitem__(key, value)
-
-    def get(self, key: 'T_Data') -> 'T_Data':
-        table = self
-        while not isinstance(table, NullData):
-            item = table[key]
-            if not isinstance(item, NullData):
-                return item
-            table = table['__base__']
-            if not isinstance(table, TableData):
-                break
-        return NullData()
 
 
 class VariablesDict(TableData, Dict[str, Union['T_Data', 'GlobalReference']]):

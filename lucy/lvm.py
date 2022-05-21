@@ -8,6 +8,33 @@ from .libs import lib_table
 from .exceptions import LVMError, ErrorCode
 from .codegen import CodeGenerator, CodeProgram, OPCodes, Function, cmp_op
 
+
+def lucy_type(data: T_Data) -> StringData:
+    if isinstance(data, NullData):
+        return 'null'
+    elif isinstance(data, BooleanData):
+        return 'bool'
+    elif isinstance(data, IntegerData):
+        return 'int'
+    elif isinstance(data, FloatData):
+        return 'float'
+    elif isinstance(data, StringData):
+        return 'string'
+    elif isinstance(data, TableData):
+        return 'table'
+    elif isinstance(data, ClosureData):
+        return 'function'
+    else:
+        raise LVMError(ErrorCode.TYPE_ERROR, f'Unknown type {type(data)}')
+
+
+def lucy_assert(v: T_Data) -> T_Data:
+    if isinstance(v, NullData) or v is False:
+        raise LVMError(ErrorCode.ASSERT_ERROR)
+    else:
+        return v
+
+
 BINARY_OPCODES = {
     OPCodes.ADD: ('__add__', '+'),
     OPCodes.SUB: ('__sub__', '-'),
@@ -61,7 +88,10 @@ class LVM:
         if packages is None:
             packages = [code_program]
         self.packages: List[CodeProgram] = packages
-        self.builtin_namespace: VariablesDict = VariablesDict({})
+        self.builtin_namespace: VariablesDict = VariablesDict({
+            'type': ClosureData(function=ExtendFunction(func=lucy_type, params_num=1)),
+            'assert': ClosureData(function=ExtendFunction(func=lucy_assert, params_num=1)),
+        })
         self.global_stack_frame: StackFrame = StackFrame(ClosureData(module_id=self.module_id, function=None))
         self.call_stack: List[StackFrame] = [self.global_stack_frame]
 

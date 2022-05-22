@@ -132,7 +132,7 @@ class ImportNameAlias(ASTNode):
         self.alias: Optional[Identifier] = alias
 
     def __repr__(self):
-        return self.name.name + ' as ' + self.alias.name if self.alias is not None else self.name.name
+        return self.name.name + ((' as ' + self.alias.name) if self.alias is not None else '')
 
 
 class BlockStatement(Statement):
@@ -247,20 +247,6 @@ class AssignmentStatement(Statement):
 
 
 class ImportStatement(Statement):
-    def __init__(self, paths: List[Identifier] = None, alias: Optional[Identifier] = None,
-                 start: Location = None, end: Location = None):
-        super().__init__(start=start, end=end)
-        if paths is None:
-            paths = list()
-        self.paths: List[Identifier] = paths
-        self.alias: Optional[Identifier] = alias
-
-    def __repr__(self):
-        return 'import ' + '.'.join(map(lambda x: x.name, self.paths)) + \
-               (' as ' + self.alias.name) if self.alias is not None else '' + ';'
-
-
-class FromImportStatement(Statement):
     def __init__(self, paths: List[Identifier] = None, names: List[ImportNameAlias] = None, star: bool = False,
                  start: Location = None, end: Location = None):
         super().__init__(start=start, end=end)
@@ -274,9 +260,12 @@ class FromImportStatement(Statement):
 
     def __repr__(self):
         if self.star:
-            return f'from {"::".join(map(lambda x: x.name, self.paths))} import *;'
+            return f'import {"::".join(map(lambda x: x.name, self.paths))}::*;'
+        elif len(self.paths) == 0:
+            return f'import {self.names[0]!r};'
         else:
-            return f'from {"::".join(map(lambda x: x.name, self.paths))} import {", ".join(map(repr, self.names))};'
+            return 'import ' + '::'.join(map(lambda x: x.name, self.paths)) + \
+                   '::{' + ', '.join(map(repr, self.names)) + '};'
 
 
 class FunctionExpression(Expression):
@@ -504,38 +493,32 @@ class Parser:
             ast_node = ImportStatement()
             ast_node.start = self.current_token.start
             self.advance_token()
-            while self.current_token.type != TokenType.SEMI or self.current_token.type == TokenType.AS:
-                self.token_match(TokenType.ID)
-                ast_node.paths.append(self.parse_expression_identifier())
-                self.advance_token()
-                if self.current_token.type == TokenType.SEMI or self.current_token.type == TokenType.AS:
+            while self.current_token.type not in [TokenType.SEMI, TokenType.AS, TokenType.LBRACE]:
+                if self.current_token.type == TokenType.MUL:
+                    ast_node.star = True
+                    self.advance_token_match(TokenType.SEMI)
                     break
-                self.token_match(TokenType.POINT)
-                self.advance_token()
-            if self.current_token.type == TokenType.AS:
+                else:
+                    self.token_match(TokenType.ID)
+                    ast_node.paths.append(self.parse_expression_identifier())
+                    self.advance_token()
+                    if self.current_token.type in [TokenType.SEMI, TokenType.AS, TokenType.LBRACE]:
+                        break
+                    self.token_match(TokenType.DOUBLE_COLON)
+                    self.advance_token()
+            if self.current_token.type == TokenType.SEMI:
+                if not ast_node.star:
+                    temp = ast_node.paths.pop()
+                    ast_node.names.append(ImportNameAlias(name=temp, start=temp.start, end=temp.end))
+            elif self.current_token.type == TokenType.AS:
                 self.advance_token_match(TokenType.ID)
-                ast_node.alias = self.parse_expression_identifier()
+                temp = ast_node.paths.pop()
+                ast_node.names.append(ImportNameAlias(name=temp, alias=self.parse_expression_identifier(),
+                                                      start=temp.start, end=temp.end))
                 self.advance_token_match(TokenType.SEMI)
-            self.advance_token()
-            ast_node.end = self.previous_token.end
-        elif self.current_token.type == TokenType.FROM:
-            ast_node = FromImportStatement()
-            ast_node.start = self.current_token.start
-            self.advance_token()
-            while self.current_token.type != TokenType.IMPORT:
-                self.token_match(TokenType.ID)
-                ast_node.paths.append(self.parse_expression_identifier())
-                self.advance_token()
-                if self.current_token.type == TokenType.IMPORT:
-                    break
-                self.token_match(TokenType.POINT)
-                self.advance_token()
-            self.advance_token()
-            if self.current_token.type == TokenType.MUL:
-                ast_node.star = True
-                self.advance_token_match(TokenType.SEMI)
-            else:
-                while self.current_token.type != TokenType.SEMI:
+            elif self.current_token.type == TokenType.LBRACE:
+                self.advance_token_match(TokenType.ID)
+                while self.current_token.type != TokenType.RBRACE:
                     self.token_match(TokenType.ID)
                     temp = ImportNameAlias(name=self.parse_expression_identifier())
                     temp.start = self.current_token.start
@@ -546,11 +529,12 @@ class Parser:
                         temp.alias = self.parse_expression_identifier()
                         temp.end = self.current_token.end
                         self.advance_token()
-                    if self.current_token.type == TokenType.SEMI:
+                    if self.current_token.type == TokenType.RBRACE:
                         temp.end = self.previous_token.end
                         break
                     self.token_match(TokenType.COMMA)
                     self.advance_token()
+                self.advance_token_match(TokenType.SEMI)
             self.advance_token()
             ast_node.end = self.previous_token.end
         elif self.current_token.type == TokenType.LBRACE:

@@ -38,7 +38,6 @@ class TokenType(Enum):
     RETURN = 'return'
     GLOBAL = 'global'
     IMPORT = 'import'
-    FROM = 'from'
     AS = 'as'
 
     IS = 'is'

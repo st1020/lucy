@@ -301,24 +301,24 @@ class CodeGenerator:
                 code_list.append(Code(OPCodes.GLOBAL, self.add_name_list(argument.name)))
         elif isinstance(ast_node, ImportStatement):
             # import
-            code_list.append(Code(OPCodes.IMPORT, self.add_const_list('.'.join(map(lambda x: x.name, ast_node.paths)))))
-            if ast_node.alias is None:
-                code_list.append(Code(OPCodes.STORE, self.add_name_list(ast_node.paths[-1].name)))
+            if len(ast_node.paths) == 0:
+                item = ast_node.names[0]
+                code_list.append(Code(OPCodes.IMPORT, self.add_const_list(item.name.name)))
+                code_list.append(Code(OPCodes.STORE, self.add_name_list(
+                    item.alias.name if item.alias is not None else item.name.name
+                )))
             else:
-                code_list.append(Code(OPCodes.STORE, self.add_name_list(ast_node.alias.name)))
-        elif isinstance(ast_node, FromImportStatement):
-            # from ... import ...
-            code_list.append(Code(OPCodes.IMPORT, self.add_const_list('.'.join(map(lambda x: x.name, ast_node.paths)))))
-            if ast_node.star:
-                code_list.append(Code(OPCodes.IMPORT_STAR))
-            else:
-                for item in ast_node.names:
-                    code_list.append(Code(OPCodes.IMPORT_FROM, self.add_const_list(item.name.name)))
-                    if item.alias is None:
-                        code_list.append(Code(OPCodes.STORE, self.add_name_list(item.name.name)))
-                    else:
-                        code_list.append(Code(OPCodes.STORE, self.add_name_list(item.alias.name)))
-            code_list.append(Code(OPCodes.POP))
+                code_list.append(Code(OPCodes.IMPORT,
+                                      self.add_const_list('.'.join(map(lambda x: x.name, ast_node.paths)))))
+                if ast_node.star:
+                    code_list.append(Code(OPCodes.IMPORT_STAR))
+                else:
+                    for item in ast_node.names:
+                        code_list.append(Code(OPCodes.IMPORT_FROM, self.add_const_list(item.name.name)))
+                        code_list.append(Code(OPCodes.STORE, self.add_name_list(
+                            item.alias.name if item.alias is not None else item.name.name
+                        )))
+                code_list.append(Code(OPCodes.POP))
         elif isinstance(ast_node, FunctionExpression):
             # func
             func = Function(params_num=len(ast_node.params))

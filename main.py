@@ -5,4 +5,4 @@ from lucy import LVM
 
 
 if __name__ == '__main__':
-    LVM.run_file('tests/test1.lucy')
+    LVM.run_file('tests/test2.lucy')

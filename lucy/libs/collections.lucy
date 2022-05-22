@@ -2,9 +2,9 @@ import table;
 
 Dict = {
     'new': func() {
-        return Dict::from_table({});
+        return Dict::from({});
     },
-    'from_table': func(t) {
+    'from': func(t) {
         return {
             '__base__': Dict,
             '__dict__': t,

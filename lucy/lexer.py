@@ -42,6 +42,7 @@ class TokenType(Enum):
     AS = 'as'
 
     IS = 'is'
+    NOT = 'not'
     AND = 'and'
     OR = 'or'
     FUNC = 'func'
@@ -75,7 +76,6 @@ class TokenType(Enum):
     DIV = '/'
     MOD = '%'
 
-    NOT = '!'
     HASH = '#'
     LESS = '<'
     GREATER = '>'

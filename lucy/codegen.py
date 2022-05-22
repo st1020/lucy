@@ -349,7 +349,7 @@ class CodeGenerator:
                 pass
             elif ast_node.operator == '-':
                 code_list.append(Code(OPCodes.NEG))
-            elif ast_node.operator == '!':
+            elif ast_node.operator == 'not':
                 code_list.append(Code(OPCodes.NOT))
             elif ast_node.operator == '#':
                 code_list.append(Code(OPCodes.GET_LEN))

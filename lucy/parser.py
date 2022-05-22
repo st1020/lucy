@@ -48,7 +48,7 @@ primary_operator_list = [
 unary_operator_list = [
     OperatorInfo(TokenType.ADD, 8, False),  # +
     OperatorInfo(TokenType.SUB, 8, False),  # -
-    OperatorInfo(TokenType.NOT, 8, False),  # !
+    OperatorInfo(TokenType.NOT, 8, False),  # not
     OperatorInfo(TokenType.HASH, 8, False),  # #
 ]
 
